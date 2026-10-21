@@ -17,6 +17,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             guard oldValue != language else { return }
             UserDefaults.standard.set(language.rawValue, forKey: "appLanguage")
             settingsWindow?.title = L("Numpad Settings")
+            onboardingWindow?.title = L("Welcome to Numpad")
             panel?.title = L("Numpad Overlay")
             if item != nil { updateMenu() }
         }
@@ -94,6 +95,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     private var panel: NSPanel?
     private var snapPanel: OverlayPanel?
     private var settingsWindow: NSWindow?
+    private var onboardingWindow: NSWindow?
+    private var onboarding: OnboardingModel?
     private var calibrationGesture = InteractiveCalibrationGesture()
     private let optionShortcut = ActivationShortcut()
     private let input = InputService()
@@ -126,6 +129,10 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         }
         optionShortcut.action = { [weak self] in
             guard let self else { return }
+            if let onboarding = self.onboarding, self.onboardingWindow?.isVisible == true {
+                onboarding.shortcutPressed()
+                return
+            }
             self.toggle()
         }
         optionShortcut.start()
@@ -163,7 +170,11 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             guard let self, self.panel?.isVisible == true, !self.overlayDragging else { return }
             self.updateGuide()
         }
-        if CommandLine.arguments.contains("--settings") { showSettings() }
+        if OnboardingState.shouldPresent(arguments: CommandLine.arguments) {
+            showOnboarding()
+        } else if CommandLine.arguments.contains("--settings") {
+            showSettings()
+        }
         if CommandLine.arguments.contains("--smoke-test") { previewGuide() }
         if CommandLine.arguments.contains("--smoke-test") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.terminate(nil) }
@@ -172,6 +183,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
 
     @objc func toggle() {
         if enabled { disable(); return }
+        // The guide's practice step must release its stream before real input starts.
+        onboardingWindow?.close()
         trusted = AXIsProcessTrusted()
         guard trusted else {
             messageText = LocalizedMessage("Allow Accessibility access, then turn the keypad on again.")
@@ -355,7 +368,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         configurationChanged()
     }
 
-    private func playHaptic(strong: Bool = false) {
+    func playHaptic(strong: Bool = false) {
         guard hapticsEnabled else { return }
         if !(strong ? TPHapticCenter() : TPHapticClick()) {
             NSHapticFeedbackManager.defaultPerformer.perform(strong ? .generic : .alignment, performanceTime: .now)
@@ -371,6 +384,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
 
     @objc func showSettings() {
+        onboardingWindow?.close()
         if enabled { disable() }
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 700),
@@ -385,6 +399,38 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         settingsWindow?.makeKeyAndOrderFront(nil)
+    }
+
+    @objc func showOnboarding() {
+        if enabled { disable() }
+        settingsWindow?.orderOut(nil)
+        if onboardingWindow == nil {
+            let model = OnboardingModel(app: self)
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
+                styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
+            window.title = L("Welcome to Numpad")
+            window.titleVisibility = .hidden
+            window.titlebarAppearsTransparent = true
+            window.isMovableByWindowBackground = true
+            window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+            window.standardWindowButton(.zoomButton)?.isHidden = true
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = NSColor(red: 0.045, green: 0.05, blue: 0.055, alpha: 1)
+            window.contentView = NSHostingView(rootView: OnboardingView(model: model, app: self))
+            window.isReleasedWhenClosed = false
+            window.delegate = self
+            window.center()
+            model.onFinish = { [weak window] in window?.close() }
+            model.onFocus = { [weak window] in
+                NSApp.activate(ignoringOtherApps: true)
+                window?.makeKeyAndOrderFront(nil)
+            }
+            onboardingWindow = window
+            onboarding = model
+        }
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate(ignoringOtherApps: true)
+        onboardingWindow?.makeKeyAndOrderFront(nil)
     }
 
     private func overlayScreen() -> NSScreen? {
@@ -531,9 +577,16 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
 
     func windowWillClose(_ notification: Notification) {
-        if let window = notification.object as? NSWindow, window === settingsWindow {
-            NSApp.setActivationPolicy(.accessory)
+        guard let window = notification.object as? NSWindow else { return }
+        if window === onboardingWindow {
+            // Dismissing the guide avoids showing it on every subsequent launch.
+            OnboardingState.complete()
+            onboarding?.tearDown()
+            onboarding = nil
+            onboardingWindow = nil
         }
+        let other = window === settingsWindow ? onboardingWindow : settingsWindow
+        if other?.isVisible != true { NSApp.setActivationPolicy(.accessory) }
     }
 
     private func updateMenu() {
@@ -544,6 +597,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         menu.addItem(withTitle: enabled ? L("Turn Keypad Off  Right ⌘⌥ / Esc") : L("Turn Keypad On  Right ⌘⌥"), action: #selector(toggle), keyEquivalent: "")
         menu.addItem(withTitle: L("Settings…"), action: #selector(showSettings), keyEquivalent: ",")
         menu.addItem(withTitle: L("Preview Keypad"), action: #selector(previewGuide), keyEquivalent: "")
+        menu.addItem(withTitle: L("Getting Started…"), action: #selector(showOnboarding), keyEquivalent: "")
         if !trusted {
             menu.addItem(withTitle: L("Allow Accessibility Access…"), action: #selector(requestPermission), keyEquivalent: "")
         }
@@ -554,9 +608,15 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
     @objc private func quit() { NSApp.terminate(nil) }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        showSettings(); return true
+        if OnboardingState.shouldPresent(arguments: []) {
+            showOnboarding()
+        } else {
+            showSettings()
+        }
+        return true
     }
     func applicationWillTerminate(_ notification: Notification) {
+        onboarding?.tearDown()
         disable(); TPHapticShutdown(); permissionTimer?.invalidate()
     }
 }

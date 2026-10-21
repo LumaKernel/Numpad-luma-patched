@@ -46,6 +46,8 @@ Press <kbd>Right ⌘</kbd> + <kbd>Right ⌥</kbd>, tap a number, and keep going.
 
 **Requires macOS 13+ and a Mac trackpad.** Force Touch is required for haptic feedback. The DMG includes Apple Silicon and Intel support.
 
+On first launch, an interactive guide walks through permission, layout, the shortcut, and a safe typing practice. Reopen it anytime from **Getting Started…** in the menu bar. English and Korean can be selected inside the guide.
+
 > While the keypad is on, normal trackpad pointer movement and scrolling are blocked. Physical clicks and click-drag still work. Opening Settings turns the keypad off.
 
 ## Settle into your layout

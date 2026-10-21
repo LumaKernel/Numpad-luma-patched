@@ -46,6 +46,9 @@ dist/Numpad.app/Contents/MacOS/TrackpadNumpad --diagnose
 # Start with Settings visible
 dist/Numpad.app/Contents/MacOS/TrackpadNumpad --settings
 
+# Open the setup guide, even after completing or dismissing it
+dist/Numpad.app/Contents/MacOS/TrackpadNumpad --onboarding
+
 # Show the overlay and quit after two seconds
 dist/Numpad.app/Contents/MacOS/TrackpadNumpad --smoke-test
 
@@ -54,6 +57,8 @@ dist/Numpad.app/Contents/MacOS/TrackpadNumpad --test-haptic
 ```
 
 `--diagnose` does not open a GUI or request permission. A successful stream start does not verify actual taps or delivery to another app.
+
+The setup guide opens automatically on first launch. Completion or dismissal saves `onboardingCompleted` under `com.yftech.TrackpadNumpad`. Reopen it from **Getting Started…** in the menu bar or use `--onboarding`; no preference reset is needed. Explicit `--settings` and `--smoke-test` launches suppress the automatic guide. Practice input remains inside the guide, and closing it releases its touch stream and input monitor.
 
 ## Input behavior
 

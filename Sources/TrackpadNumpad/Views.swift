@@ -1,7 +1,6 @@
 import SwiftUI
 import TrackpadCore
 
-private let mint = Color(red: 0.43, green: 0.94, blue: 0.76)
 private let ink = Color.white.opacity(0.9)
 
 private struct TrackpadMaterial: NSViewRepresentable {

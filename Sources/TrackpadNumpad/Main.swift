@@ -8,8 +8,9 @@ enum Main {
         if CommandLine.arguments.contains("--check-localization") {
             let english = AppLocalization.text("Settings…", language: .english)
             let korean = AppLocalization.text("Settings…", language: .korean)
-            print("English: \(english)\nKorean: \(korean)")
-            exit(english == "Settings…" && korean == "설정…" ? 0 : 1)
+            let onboarding = AppLocalization.text("Get Started", language: .korean)
+            print("English: \(english)\nKorean: \(korean)\nOnboarding: Get Started / \(onboarding)")
+            exit(english == "Settings…" && korean == "설정…" && onboarding == "시작하기" ? 0 : 1)
         }
         if CommandLine.arguments.contains("--test-haptic") {
             let success = TPHapticClick()
