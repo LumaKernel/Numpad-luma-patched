@@ -23,11 +23,11 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
 <plist version="1.0"><dict>
     <key>CFBundleName</key><string>Numpad</string>
     <key>CFBundleDisplayName</key><string>Numpad</string>
-    <key>CFBundleIdentifier</key><string>dev.yeonfish.TrackpadNumpad</string>
+    <key>CFBundleIdentifier</key><string>com.yftech.TrackpadNumpad</string>
     <key>CFBundleExecutable</key><string>TrackpadNumpad</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.0.2</string>
-    <key>CFBundleVersion</key><string>2</string>
+    <key>CFBundleShortVersionString</key><string>0.0.3</string>
+    <key>CFBundleVersion</key><string>3</string>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key><array><string>en</string><string>ko</string></array>
     <key>CFBundleIconFile</key><string>AppIcon</string>
@@ -42,9 +42,9 @@ PLIST
 swift scripts/MakeIcon.swift "$PWD/dist/AppIcon.iconset"
 iconutil -c icns "$PWD/dist/AppIcon.iconset" -o "$bundle/Contents/Resources/AppIcon.icns"
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" --identifier dev.yeonfish.TrackpadNumpad "$bundle"
+    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" --identifier com.yftech.TrackpadNumpad "$bundle"
 else
-    codesign --force --sign - --identifier dev.yeonfish.TrackpadNumpad "$bundle"
+    codesign --force --sign - --identifier com.yftech.TrackpadNumpad "$bundle"
 fi
 codesign --verify --strict "$bundle"
 "$bundle/Contents/MacOS/TrackpadNumpad" --check-localization

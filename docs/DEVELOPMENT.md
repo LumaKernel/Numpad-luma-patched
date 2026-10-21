@@ -12,7 +12,7 @@ bash scripts/build-app.sh
 open dist/Numpad.app
 ```
 
-The default build targets the current Mac architecture and uses an ad hoc signature for local testing. `UNIVERSAL=1 bash scripts/build-app.sh` includes arm64 and x86_64. `VERSION` is the source of the release version. The executable target and bundle identifier retain the original TrackpadNumpad names for continuity with existing settings and permissions.
+The default build targets the current Mac architecture and uses an ad hoc signature for local testing. `UNIVERSAL=1 bash scripts/build-app.sh` includes arm64 and x86_64. `VERSION` is the source of the release version. The executable target remains `TrackpadNumpad`. The app bundle identifier and code-signing identifier are `com.yftech.TrackpadNumpad`. Published releases through 0.0.2 used `dev.yeonfish.TrackpadNumpad`; macOS treats the new identifier as a separate app for preferences and Accessibility permissions.
 
 ## Codebase
 
