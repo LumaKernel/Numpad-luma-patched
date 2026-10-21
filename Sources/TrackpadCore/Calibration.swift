@@ -18,8 +18,8 @@ public enum CalibrationError: Error, LocalizedError {
     case invalidPoints, tooClose
     public var errorDescription: String? {
         switch self {
-        case .invalidPoints: return "트랙패드 안에서 다시 탭해 주세요."
-        case .tooClose: return "손가락 사이를 조금 더 벌려 주세요."
+        case .invalidPoints: return "Try tapping again within the trackpad."
+        case .tooClose: return "Move your fingers a little farther apart."
         }
     }
 }

@@ -10,7 +10,17 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     @Published private(set) var enabled = false
     @Published private(set) var trusted = AXIsProcessTrusted()
     @Published private(set) var deviceReady = false
-    @Published private(set) var message = "트랙패드가 숫자 키패드로 바뀝니다."
+    @Published private var messageText = LocalizedMessage("Turn your trackpad into a numeric keypad.")
+    var message: String { messageText.text(language: language) }
+    @Published var language = AppLanguage.load() {
+        didSet {
+            guard oldValue != language else { return }
+            UserDefaults.standard.set(language.rawValue, forKey: "appLanguage")
+            settingsWindow?.title = L("Numpad Settings")
+            panel?.title = L("Numpad Overlay")
+            if item != nil { updateMenu() }
+        }
+    }
     @Published private(set) var highlighted: UInt16?
     @Published private(set) var lastKey = "—"
     @Published private(set) var touches: [Touch] = []
@@ -37,7 +47,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         }
     }
     @Published private(set) var calibrationTracking = false
-    private var calibrationBaseline: (transform: PadTransform, has: Bool, status: String)?
+    private var calibrationBaseline: (transform: PadTransform, has: Bool, status: LocalizedMessage)?
     @Published var keepCalibrationOnReactivate = UserDefaults.standard.object(forKey: "keepCalibrationOnReactivate") as? Bool ?? true {
         didSet { UserDefaults.standard.set(keepCalibrationOnReactivate, forKey: "keepCalibrationOnReactivate") }
     }
@@ -50,7 +60,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
     @Published private(set) var calibrationTransform = PadTransform.identity
     @Published private(set) var hasCalibration = false
-    @Published private(set) var calibrationStatus = "아직 보정하지 않았습니다."
+    @Published private var calibrationText = LocalizedMessage("No calibration yet.")
+    var calibrationStatus: String { calibrationText.text(language: language) }
     var effectiveTransform: PadTransform { experimentalCalibration ? calibrationTransform : .identity }
     @Published var hapticsEnabled = UserDefaults.standard.object(forKey: "hapticsEnabled") as? Bool ?? true {
         didSet { UserDefaults.standard.set(hapticsEnabled, forKey: "hapticsEnabled") }
@@ -103,7 +114,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     func applicationDidFinishLaunching(_ notification: Notification) {
         configurationChanged()
         deviceReady = TPInitialize()
-        if !deviceReady { message = String(cString: TPError()) }
+        if !deviceReady { messageText = LocalizedMessage(String(cString: TPError())) }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         updateMenu()
         input.onEscape = { [weak self] in self?.disable() }
@@ -120,7 +131,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         optionShortcut.start()
         input.onFailure = { [weak self] in
             self?.disable()
-            self?.message = "입력 감시가 중단되어 숫자판을 껐습니다. 다시 켜서 사용하세요."
+            self?.messageText = LocalizedMessage("Input monitoring stopped, so the keypad was turned off. Turn it on again to continue.")
         }
         previousApp = NSWorkspace.shared.frontmostApplication
         activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -142,9 +153,9 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             self.trusted = AXIsProcessTrusted()
             if wasTrusted != self.trusted { self.updateMenu() }
             if self.trusted { self.optionShortcut.start() } else { self.optionShortcut.stop() }
-            if self.enabled && !self.trusted { self.disable(); self.message = "손쉬운 사용 권한을 다시 허용해 주세요." }
+            if self.enabled && !self.trusted { self.disable(); self.messageText = LocalizedMessage("Please allow Accessibility access again.") }
             // Secure input must not leave the pointer trapped if Escape is unavailable.
-            if self.enabled && IsSecureEventInputEnabled() { self.disable(); self.message = "보안 입력 중에는 숫자판이 일시 해제됩니다." }
+            if self.enabled && IsSecureEventInputEnabled() { self.disable(); self.messageText = LocalizedMessage("The keypad is paused while Secure Input is active.") }
         }
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -163,15 +174,15 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if enabled { disable(); return }
         trusted = AXIsProcessTrusted()
         guard trusted else {
-            message = "손쉬운 사용 권한을 허용한 뒤 다시 켜 주세요."
+            messageText = LocalizedMessage("Allow Accessibility access, then turn the keypad on again.")
             requestPermission(); return
         }
-        guard !IsSecureEventInputEnabled() else { message = "보안 입력을 마친 뒤 다시 켜 주세요."; return }
+        guard !IsSecureEventInputEnabled() else { messageText = LocalizedMessage("Turn the keypad on again after leaving Secure Input."); return }
         deviceReady = TPInitialize()
-        guard deviceReady else { message = String(cString: TPError()); showSettings(); return }
+        guard deviceReady else { messageText = LocalizedMessage(String(cString: TPError())); showSettings(); return }
         activationInput = FocusedInput.capture(applicationPID: NSApp.isActive ? previousApp?.processIdentifier : nil)
         guard input.start() else {
-            message = "입력 감시를 시작하지 못했습니다. 손쉬운 사용 권한 확인 후 앱을 다시 실행하세요."
+            messageText = LocalizedMessage("Could not start input monitoring. Check Accessibility access and restart Numpad.")
             showSettings(); return
         }
         generation += 1
@@ -221,17 +232,17 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             }
         }
         guard stream?.start() == true else {
-            stream = nil; input.stop(); message = String(cString: TPError()); return
+            stream = nil; input.stop(); messageText = LocalizedMessage(String(cString: TPError())); return
         }
         if !keepCalibrationOnReactivate {
             calibrationTransform = .identity
             hasCalibration = false
-            calibrationStatus = "기본 배치로 시작했습니다. 필요하면 다시 보정하세요."
+            calibrationText = LocalizedMessage("Using the default layout. Calibrate again if needed.")
             resetInputState()
         }
         enabled = true
         input.blocksSystemGestures = experimentalCalibration
-        message = "숫자판 사용 중 · Esc로 해제"
+        messageText = LocalizedMessage("Keypad active · Press Esc to exit")
         if NSApp.isActive {
             settingsWindow?.orderOut(nil)
             NSApp.setActivationPolicy(.accessory)
@@ -251,7 +262,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         previewRevision += 1
         activationInput = nil
         hideOverlay()
-        message = "숫자판이 꺼져 있습니다. 트랙패드를 평소처럼 사용하세요."
+        messageText = LocalizedMessage("Keypad off. Use your trackpad as usual.")
         if item != nil { updateMenu() }
     }
 
@@ -287,10 +298,10 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if let data = UserDefaults.standard.data(forKey: calibrationKey),
            let saved = try? JSONDecoder().decode(PadTransform.self, from: data), saved.isSimilarity {
             calibrationTransform = saved; hasCalibration = true
-            calibrationStatus = "저장된 보정이 준비되었습니다."
+            calibrationText = LocalizedMessage("Saved calibration is ready.")
         } else {
             calibrationTransform = .identity; hasCalibration = false
-            calibrationStatus = "아직 보정하지 않았습니다."
+            calibrationText = LocalizedMessage("No calibration yet.")
         }
         resetInputState()
     }
@@ -305,7 +316,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         switch phase {
         case .began, .changed:
             if calibrationBaseline == nil {
-                calibrationBaseline = (calibrationTransform, hasCalibration, calibrationStatus)
+                calibrationBaseline = (calibrationTransform, hasCalibration, calibrationText)
             }
             calibrationTracking = true
             if let points = frame.points {
@@ -318,7 +329,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             calibrationTracking = false; calibrationBaseline = nil
         case .cancelled:
             if let baseline = calibrationBaseline {
-                calibrationTransform = baseline.transform; hasCalibration = baseline.has; calibrationStatus = baseline.status
+                calibrationTransform = baseline.transform; hasCalibration = baseline.has; calibrationText = baseline.status
             }
             calibrationTracking = false; calibrationBaseline = nil
         }
@@ -330,11 +341,11 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             let transform = try PadTransform.calibrating(points, layout: controlSide, preserveOrder: preserveOrder, reference: calibrationBaseline?.transform ?? calibrationTransform)
             calibrationTransform = transform; hasCalibration = true
             if persist { persistCalibration() }
-            calibrationStatus = persist ? "\(points.count)손가락 보정 적용됨 · 회전·이동·균일 크기 반영" : "\(points.count)손가락을 따라 보정 중"
+            calibrationText = LocalizedMessage(persist ? "%d-finger calibration applied · Position, rotation, and scale" : "Calibrating with %d fingers", count: points.count)
             if resetGesture { resetInputState() }
             if feedback && hapticCalibration { playHaptic() }
         } catch {
-            calibrationStatus = error.localizedDescription
+            calibrationText = LocalizedMessage(error.localizedDescription)
             if resetGesture { resetInputState() }
         }
     }
@@ -364,7 +375,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 700),
                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-            window.title = "Trackpad Numpad 설정"
+            window.title = L("Numpad Settings")
             window.contentView = NSHostingView(rootView: SettingsView(model: self))
             window.isReleasedWhenClosed = false
             window.delegate = self
@@ -407,7 +418,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if panel == nil {
             let created = OverlayPanel(contentRect: NSRect(x: 0, y: 0, width: 540, height: 360),
                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            created.title = "Trackpad Numpad 오버레이"
+            created.title = L("Numpad Overlay")
             created.contentView = NSHostingView(rootView: GuideView(model: self))
             created.isOpaque = false; created.backgroundColor = .clear
             created.hasShadow = true
@@ -526,18 +537,18 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
 
     private func updateMenu() {
-        item.button?.image = NSImage(systemSymbolName: enabled ? "rectangle.grid.3x3.fill" : "rectangle.grid.3x3", accessibilityDescription: "Trackpad Numpad")
+        item.button?.image = NSImage(systemSymbolName: enabled ? "rectangle.grid.3x3.fill" : "rectangle.grid.3x3", accessibilityDescription: "Numpad")
         item.button?.contentTintColor = enabled ? .systemMint : nil
-        item.button?.toolTip = "Trackpad Numpad · 오른쪽 ⌘ + 오른쪽 ⌥로 전환"
+        item.button?.toolTip = L("Numpad · Right ⌘ + Right ⌥ to toggle")
         let menu = NSMenu()
-        menu.addItem(withTitle: enabled ? "숫자판 끄기  오른쪽 ⌘⌥ / Esc" : "숫자판 켜기  오른쪽 ⌘⌥", action: #selector(toggle), keyEquivalent: "")
-        menu.addItem(withTitle: "설정…", action: #selector(showSettings), keyEquivalent: ",")
-        menu.addItem(withTitle: "키 배치 미리 보기", action: #selector(previewGuide), keyEquivalent: "")
+        menu.addItem(withTitle: enabled ? L("Turn Keypad Off  Right ⌘⌥ / Esc") : L("Turn Keypad On  Right ⌘⌥"), action: #selector(toggle), keyEquivalent: "")
+        menu.addItem(withTitle: L("Settings…"), action: #selector(showSettings), keyEquivalent: ",")
+        menu.addItem(withTitle: L("Preview Keypad"), action: #selector(previewGuide), keyEquivalent: "")
         if !trusted {
-            menu.addItem(withTitle: "손쉬운 사용 권한 허용…", action: #selector(requestPermission), keyEquivalent: "")
+            menu.addItem(withTitle: L("Allow Accessibility Access…"), action: #selector(requestPermission), keyEquivalent: "")
         }
         menu.addItem(.separator())
-        menu.addItem(withTitle: "종료", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: L("Quit Numpad"), action: #selector(quit), keyEquivalent: "q")
         menu.items.forEach { $0.target = self }
         item.menu = menu
     }

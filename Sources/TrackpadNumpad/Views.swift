@@ -80,7 +80,7 @@ struct GuideView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 20))
             }
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.12), lineWidth: 1))
-            Text("Esc로 해제")
+            Text(L("Press Esc to exit"))
                 .font(.system(size: 10))
                 .foregroundStyle(.white.opacity(0.6))
                 .shadow(color: .black.opacity(0.8), radius: 2, y: 1)
@@ -137,23 +137,23 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Trackpad Numpad").font(.system(size: 23, weight: .semibold))
-                Text("오른쪽 ⌘ + 오른쪽 ⌥로 켜기·끄기 · Esc로 해제")
+                Text("Numpad").font(.system(size: 23, weight: .semibold))
+                Text(L("Right ⌘ + Right ⌥ to toggle · Esc to exit"))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             TabView {
-                generalSettings.tabItem { Text("일반") }
-                hapticSettings.tabItem { Text("햅틱") }
-                experimentalSettings.tabItem { Text("실험적") }
+                generalSettings.tabItem { Text(L("General")) }
+                hapticSettings.tabItem { Text(L("Haptics")) }
+                experimentalSettings.tabItem { Text(L("Experimental")) }
             }
             HStack {
                 if !model.trusted {
-                    Button("손쉬운 사용 권한 허용…") { model.requestPermission() }
+                    Button(L("Allow Accessibility Access…")) { model.requestPermission() }
                 }
                 Spacer()
-                Button("오버레이 미리 보기") { model.previewGuide() }
+                Button(L("Preview Overlay")) { model.previewGuide() }
             }
-            Text("설정을 변경하면 자동 저장됩니다. 설정창을 열면 숫자판이 해제됩니다.")
+            Text(L("Changes are saved automatically. Opening Settings turns off the keypad."))
                 .font(.system(size: 10)).foregroundStyle(.tertiary)
         }
         .padding(24)
@@ -164,11 +164,23 @@ struct SettingsView: View {
 
     private var generalSettings: some View {
         VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    Text(L("Language"))
+                    Spacer()
+                    Picker(L("Language"), selection: $model.language) {
+                        ForEach(AppLanguage.allCases, id: \.self) { language in
+                            Text(language.name).tag(language)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 160)
+                }
+                Divider()
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("조작키 위치").font(.headline)
-                    Picker("조작키 위치", selection: $model.controlSide) {
-                        Text("왼쪽").tag(KeypadLayout.left)
-                        Text("오른쪽").tag(KeypadLayout.right)
+                    Text(L("Operator Position")).font(.headline)
+                    Picker(L("Operator Position"), selection: $model.controlSide) {
+                        Text(L("Left")).tag(KeypadLayout.left)
+                        Text(L("Right")).tag(KeypadLayout.right)
                     }.pickerStyle(.segmented).labelsHidden()
                     KeypadView(highlighted: nil, compact: true, layout: model.controlSide)
                         .frame(height: 190).padding(14)
@@ -176,11 +188,11 @@ struct SettingsView: View {
                 }
             Divider()
             HStack {
-                Text("오버레이 위치").font(.system(size: 12))
+                Text(L("Overlay Position")).font(.system(size: 12))
                 Spacer()
-                Button("하단 중앙으로 초기화") { model.resetOverlayPosition() }
+                Button(L("Reset to Bottom Center")) { model.resetOverlayPosition() }
             }
-            Text("오버레이를 눌러 드래그하면 위치가 저장됩니다. 활성화할 때 입력창을 가리면 화면 안의 빈자리로 이동합니다.")
+            Text(L("Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
@@ -189,22 +201,22 @@ struct SettingsView: View {
 
     private var hapticSettings: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Toggle("햅틱 사용", isOn: $model.hapticsEnabled)
+            Toggle(L("Enable Haptics"), isOn: $model.hapticsEnabled)
                 .font(.headline)
             Divider()
             VStack(alignment: .leading, spacing: 16) {
-                Text("숫자·조작키 입력").font(.headline)
-                Toggle("손가락을 댈 때", isOn: $model.hapticTouchDown)
-                Toggle("손가락을 떼어 입력이 확정될 때", isOn: $model.hapticInputConfirmed)
+                Text(L("Key Input")).font(.headline)
+                Toggle(L("On touch down"), isOn: $model.hapticTouchDown)
+                Toggle(L("When a tap is confirmed on release"), isOn: $model.hapticInputConfirmed)
                 Divider()
-                Text("5 중심 안내").font(.headline)
-                Toggle("중심 영역에 들어갈 때", isOn: $model.hapticFiveEnter)
-                Toggle("중심 영역에서 벗어날 때", isOn: $model.hapticFiveExit)
-                Text("작은 중심 영역을 지날 때 강한 햅틱을 줍니다.")
+                Text(L("Center Guide for 5")).font(.headline)
+                Toggle(L("When entering the center"), isOn: $model.hapticFiveEnter)
+                Toggle(L("When leaving the center"), isOn: $model.hapticFiveExit)
+                Text(L("A stronger haptic marks the small center region."))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                 Divider()
-                Text("실험적 보정").font(.headline)
-                Toggle("손가락 보정이 적용될 때", isOn: $model.hapticCalibration)
+                Text(L("Experimental Calibration")).font(.headline)
+                Toggle(L("When finger calibration is applied"), isOn: $model.hapticCalibration)
             }
             .disabled(!model.hapticsEnabled)
             Spacer(minLength: 0)
@@ -218,51 +230,51 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle(isOn: $model.experimentalCalibration) {
                         HStack(spacing: 8) {
-                            Text("손가락 위치로 좌표 보정").fontWeight(.medium)
-                            Text("실험적").font(.system(size: 10)).foregroundStyle(mint)
+                            Text(L("Calibrate with Finger Positions")).fontWeight(.medium)
+                            Text(L("Experimental")).font(.system(size: 10)).foregroundStyle(mint)
                                 .padding(.horizontal, 6).padding(.vertical, 3)
                                 .background(mint.opacity(0.1), in: Capsule())
                         }
                     }.toggleStyle(.switch).tint(mint)
-                    Text("숫자판을 켠 뒤 세 손가락을 동시에 대세요. 가운데 손가락을 5의 중심에 고정하고 양쪽 손가락으로 회전과 크기를 맞춥니다. 이동·회전·균일한 크기 조절을 적용하며 키 모양과 비율은 유지합니다.")
+                    Text(L("With the keypad on, place three fingers together. Keep the middle finger at the center of 5 and use the outer fingers to adjust rotation and scale. Key shapes and proportions stay the same."))
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 8) {
-                        Picker("보정 시점", selection: $model.calibrationTiming) {
-                            Text("닿을 때").tag(CalibrationTiming.touchDown)
-                            Text("뗄 때").tag(CalibrationTiming.liftOff)
+                        Picker(L("Apply Calibration"), selection: $model.calibrationTiming) {
+                            Text(L("On Touch")).tag(CalibrationTiming.touchDown)
+                            Text(L("On Release")).tag(CalibrationTiming.liftOff)
                         }.pickerStyle(.segmented)
-                        Text("기본은 닿을 때입니다. 세 손가락 또는 네 손가락을 댄 채 드래그하면 배치가 이동·회전·크기에 실시간으로 따라옵니다. 보정 중에는 macOS 드래그·확대/축소·데스크탑 전환 제스처를 차단합니다.")
+                        Text(L("Defaults to On Touch. Drag with three or four fingers to move, rotate, and scale the layout live. macOS drag, zoom, and desktop-switching gestures are blocked during calibration."))
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.leading, 12)
                     .disabled(!model.experimentalCalibration)
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle("다시 켤 때 보정 유지", isOn: $model.keepCalibrationOnReactivate)
+                        Toggle(L("Keep Calibration Between Sessions"), isOn: $model.keepCalibrationOnReactivate)
                             .toggleStyle(.switch).tint(mint)
-                        Text("켜면 마지막 보정을 이어 씁니다. 끄면 숫자판을 켤 때마다 기본 배치로 시작합니다. 변경은 다음 활성화부터 적용됩니다.")
+                        Text(L("Keep the last calibration when turning the keypad back on. Turn this off to start each session with the default layout. Applies to the next session."))
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(.leading, 12)
                     .disabled(!model.experimentalCalibration)
                     VStack(alignment: .leading, spacing: 8) {
-                        Toggle("4손가락 보정 추가", isOn: $model.fourFingerCalibration)
+                        Toggle(L("Enable Four-Finger Calibration"), isOn: $model.fourFingerCalibration)
                             .toggleStyle(.switch).tint(mint)
-                        Text("네 손가락을 동시에 대면 가운데 두 손가락을 왼쪽부터 ×·−에 맞춥니다. 두 키의 중앙이 손가락에 오도록 이동·회전·균일한 크기 조절을 적용합니다.")
+                        Text(L("Place four fingers together. The middle two align with × and − from left to right, adjusting position, rotation, and scale to match their key centers."))
                             .font(.system(size: 12)).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding(12).background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 10))
                     .disabled(!model.experimentalCalibration)
-                    Text("마지막 보정이 전체 배치에 적용됩니다. 조작키 방향별로 저장하며, 기능을 끄면 기본 배치로 돌아갑니다.")
+                    Text(L("The latest calibration applies to the entire layout and is saved separately for each operator position. Turn calibration off to return to the default layout."))
                         .font(.system(size: 11)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     HStack(alignment: .top) {
                         Text(model.calibrationStatus).font(.system(size: 11)).foregroundStyle(.secondary)
                         Spacer()
-                        Button("보정 초기화") { model.resetCalibration() }.disabled(!model.hasCalibration)
+                        Button(L("Reset Calibration")) { model.resetCalibration() }.disabled(!model.hasCalibration)
                     }
                 }
                 .padding(20)

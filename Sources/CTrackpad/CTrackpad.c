@@ -57,7 +57,7 @@ static int receiveFrame(void *sender, Contact *contacts, int count, double times
 bool TPInitialize(void) {
     if (device) return true;
     if (!library) library = dlopen("/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport", RTLD_NOW | RTLD_LOCAL);
-    if (!library) { errorMessage = "MultitouchSupport 프레임워크를 불러올 수 없습니다."; return false; }
+    if (!library) { errorMessage = "Could not load the MultitouchSupport framework."; return false; }
     createDefault = dlsym(library, "MTDeviceCreateDefault");
     registerCallback = dlsym(library, "MTRegisterContactFrameCallback");
     unregisterCallback = dlsym(library, "MTUnregisterContactFrameCallback");
@@ -65,10 +65,10 @@ bool TPInitialize(void) {
     stopDevice = dlsym(library, "MTDeviceStop");
     isRunning = dlsym(library, "MTDeviceIsRunning");
     if (!createDefault || !registerCallback || !unregisterCallback || !startDevice || !stopDevice || !isRunning) {
-        errorMessage = "이 macOS 버전에서 필요한 트랙패드 API를 찾을 수 없습니다."; return false;
+        errorMessage = "The required trackpad API is unavailable on this version of macOS."; return false;
     }
     device = createDefault();
-    if (!device) { errorMessage = "트랙패드를 찾을 수 없습니다. 트랙패드를 연결한 뒤 다시 시도하세요."; return false; }
+    if (!device) { errorMessage = "No trackpad found. Connect a trackpad and try again."; return false; }
     // The default device is retained for this process's lifetime.
     return true;
 }
@@ -83,7 +83,7 @@ bool TPStart(TPCallback callback, void *context) {
     startDevice(device, 0);
     running = true;
     if (!isRunning(device)) {
-        errorMessage = "트랙패드 터치 수신을 시작하지 못했습니다. 연결을 확인하고 앱을 다시 실행하세요.";
+        errorMessage = "Could not start receiving trackpad touches. Check the connection and restart Numpad.";
         TPStop(); return false;
     }
     return true;

@@ -1,160 +1,115 @@
-# Numpad
+<p align="center">
+  <img src="docs/images/icon.png" width="112" alt="Numpad app icon">
+</p>
 
-Mac 트랙패드를 숫자 키패드로 바꾸는 macOS 메뉴 막대 앱입니다. 오른쪽 Command + Option으로 켜고, 트랙패드를 탭해 현재 선택한 입력 칸에 숫자와 연산자를 입력합니다.
+<h1 align="center">Numpad</h1>
 
-Swift, AppKit, SwiftUI로 작성했으며 외부 패키지 의존성이 없습니다.
+<p align="center">
+  <strong>Your trackpad. A number pad.</strong><br>
+  A native macOS menu bar app for the numbers your keyboard is missing.
+</p>
 
-## 주요 기능
+<p align="center">
+  <a href="https://github.com/yeonfish6040/Numpad/releases/latest"><img src="https://img.shields.io/github/v/release/yeonfish6040/Numpad?style=flat-square&color=6eefc2" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS-13%2B-222222?style=flat-square&logo=apple&logoColor=white" alt="macOS 13 or later">
+  <img src="https://img.shields.io/badge/Apple_Silicon_%2B_Intel-universal-222222?style=flat-square" alt="Apple Silicon and Intel">
+  <img src="https://img.shields.io/badge/Swift-native-F05138?style=flat-square&logo=swift&logoColor=white" alt="Built with Swift">
+</p>
 
-- 트랙패드의 터치 위치를 숫자·연산자 키로 변환
-- 조작키를 왼쪽 또는 오른쪽에 배치
-- 반투명 오버레이에 키 배치, 입력 강조, 손가락 위치 표시
-- 오버레이 드래그, 가장자리·중앙 스냅, 위치 저장
-- 활성화 시 포커스된 입력창과 텍스트 커서를 피해 오버레이 배치
-- 접촉 시작, 입력 확정, `5` 중심 진입·이탈에 햅틱 피드백
-- 기준 손가락을 둔 채 다른 손가락으로 반복 입력
-- 세 손가락 또는 네 손가락으로 위치·회전·크기 보정하는 실험적 기능
+<p align="center">
+  <a href="https://github.com/yeonfish6040/Numpad/releases/latest"><strong>Download for Mac ↓</strong></a>
+  &nbsp; · &nbsp; <a href="#get-started">Get started</a>
+  &nbsp; · &nbsp; <a href="docs/DEVELOPMENT.md">Build from source</a>
+  &nbsp; · &nbsp; <a href="README.ko.md">한국어</a>
+</p>
 
-## 요구 사항
+<p align="center">
+  <img src="docs/images/overlay.jpg" width="780" alt="Numpad’s floating keypad overlay, with numbers and operators laid out across the trackpad">
+</p>
 
-- macOS 13 이상
-- Mac 트랙패드
-- 손쉬운 사용 권한
-- 빌드 시 Swift 5.9 이상과 Xcode Command Line Tools
+Press <kbd>Right ⌘</kbd> + <kbd>Right ⌥</kbd>, tap a number, and keep going. Numpad turns the touch surface you already have into a numeric keypad, with an overlay to guide you and haptics you can feel.
 
-햅틱은 Force Touch 트랙패드에서 지원합니다.
+## A little more keyboard, without more hardware
 
-## 빌드 및 실행
+| | |
+| :--- | :--- |
+| **Tap to type**<br>Numbers, decimal point, arithmetic operators, Return, and Backspace. A short tap types once when you lift your finger. | **Feel each input**<br>Separate haptics for touch down and confirmed input, plus a stronger guide at the center of `5`. |
+| **Make room**<br>Drag the translucent overlay anywhere. Snap to screen edges or center; let it move around the focused input field. | **Pick your side**<br>Place operators on the left or right. Rest one finger and use another for repeated taps. |
+| **Keep it local**<br>No accounts, network requests, analytics, or input log files. The app reads field geometry to position the overlay, not field contents. | **Choose your language**<br>English by default, with Korean available in Settings. Switch instantly, without restarting. |
+
+## Get started
+
+1. **[Download the latest DMG](https://github.com/yeonfish6040/Numpad/releases/latest)**, open it, and drag **Numpad** into **Applications**. Release builds are Developer ID signed and notarized by Apple.
+2. Open Numpad and allow it under **System Settings → Privacy & Security → Accessibility**. The app lives in your menu bar.
+3. Focus a text field, then press and release <kbd>Right ⌘</kbd> + <kbd>Right ⌥</kbd> to turn the keypad on.
+4. Tap the position of a key on your trackpad. Press <kbd>Esc</kbd> or the same shortcut to go back to normal.
+
+**Requires macOS 13+ and a Mac trackpad.** Force Touch is required for haptic feedback. The DMG includes Apple Silicon and Intel support.
+
+> While the keypad is on, normal trackpad pointer movement and scrolling are blocked. Physical clicks and click-drag still work. Opening Settings turns the keypad off.
+
+## Settle into your layout
+
+Choose **Settings → General** to change the language or operator position. Drag the overlay to save its location, or use **Reset to Bottom Center** to start fresh.
+
+Choose **Settings → Haptics** to decide which interactions you want to feel.
+
+<p align="center">
+  <img src="docs/images/settings-en.jpg" width="46%" alt="General settings with English language selection and keypad layout preview">
+  &nbsp;
+  <img src="docs/images/haptics-en.jpg" width="46%" alt="Haptic settings for touch down, confirmed taps, and the center guide">
+</p>
+
+<details>
+<summary><strong>Experimental: fit the keypad to your fingers</strong></summary>
+
+Enable **Settings → Experimental → Calibrate with Finger Positions** to move, rotate, and scale the layout with three fingers. The middle finger anchors `5`; the outer fingers set the angle and scale.
+
+Optional four-finger calibration aligns the middle two fingers with `×` and `−`. Calibration is saved separately for left and right operator layouts, and can be kept between sessions or reset at any time. It is off by default.
+
+Calibration blocks conflicting macOS gestures and temporarily suspends trackpad/scroll zoom settings while active, restoring the previous values when the mode ends. Large adjustments can move keys beyond the trackpad area.
+
+<p align="center">
+  <img src="docs/images/calibration-en.jpg" width="500" alt="Experimental finger calibration settings">
+</p>
+
+</details>
+
+## Good to know
+
+<details>
+<summary><strong>Why is the shortcut not working?</strong></summary>
+
+Use the **right-hand** Command and Option keys, without Shift or Control. Check Accessibility permission and the menu bar icon. Secure Input, sleep, permission loss, or a stopped input monitor turns keypad mode off.
+
+</details>
+
+<details>
+<summary><strong>Can I rest a finger on the trackpad?</strong></summary>
+
+Yes. A stationary finger becomes an anchor after about 120 ms, letting another finger tap repeatedly. The anchor does not type. Lifting it or moving it too far cancels the current tap. A single-finger tap on `5` still types normally.
+
+</details>
+
+<details>
+<summary><strong>What should I know about compatibility?</strong></summary>
+
+Numpad uses private Apple APIs for trackpad input, some haptics, and experimental zoom control. Compatibility may change with macOS updates. It uses the default trackpad; restart the app after changing connected trackpads.
+
+Physical clicks and tap-to-click are distinguished using pressure and contact timing. A pressureless external mouse used alongside trackpad touches may be treated as tap-to-click. Decimal input and keypad shortcuts follow the receiving app and input settings.
+
+</details>
+
+## Build, explore, contribute
 
 ```sh
+git clone https://github.com/yeonfish6040/Numpad.git
+cd Numpad
 swift test
 bash scripts/build-app.sh
-open "dist/Numpad.app"
+open dist/Numpad.app
 ```
 
-빌드 산출물은 `dist/Numpad.app`입니다.
+Built with Swift, AppKit, and SwiftUI, with no external package dependencies. The [development guide](docs/DEVELOPMENT.md) covers the codebase, localization, diagnostics, and signed DMG builds.
 
-자주 사용할 경우 빌드한 앱을 응용 프로그램 폴더로 복사한 뒤 실행하세요. 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용에서 앱을 허용해야 합니다. 목록에 없으면 `+`로 앱을 추가할 수 있습니다.
-
-## 사용법
-
-1. 메모, 스프레드시트 등에서 입력할 칸을 선택합니다.
-2. **오른쪽 Command + 오른쪽 Option**을 함께 눌렀다 놓습니다.
-3. 원하는 키 위치를 한 손가락으로 짧게 탭하고 뗍니다.
-4. **Esc** 또는 같은 단축키로 숫자판을 끕니다.
-
-왼쪽 Command·Option 조합이나 Shift·Control이 추가된 조합은 활성화하지 않습니다. 단축키를 누르고 있어도 반복 전환하지 않습니다.
-
-기본 배치는 다음과 같습니다. 메뉴 막대 → **설정…** → **일반**에서 조작키를 오른쪽으로 옮길 수 있습니다.
-
-```text
-┌─────┬─────┬─────┬─────┬─────┐
-│  ⌫  │  ÷  │  7  │  8  │  9  │
-├─────┼─────┼─────┼─────┼─────┤
-│  ×  │  −  │  4  │  5  │  6  │
-├─────┼─────┼─────┼─────┼─────┤
-│     │     │  1  │  2  │  3  │
-│  +  │  ↵  ├─────┴─────┼─────┤
-│     │     │     0     │  .  │
-└─────┴─────┴───────────┴─────┘
-```
-
-25~450ms의 짧은 탭을 손가락을 뗄 때 한 번 입력합니다. 밀기, 길게 누르기, 입력용 손가락 여러 개의 동시 접촉은 해당 탭을 취소합니다. 손가락을 계속 대고 있어도 키를 반복 입력하지 않습니다.
-
-한 손가락을 약 120ms 이상 가만히 두면 기준 손가락으로 인식합니다. 다른 손가락으로 연속 탭할 수 있으며 기준 손가락은 숫자를 입력하지 않습니다. 동시에 두 손가락을 대는 경우 `5` 중심의 손가락을 즉시 기준으로 선택합니다. 기준 손가락을 떼거나 크게 움직이면 진행 중인 탭을 취소하고, 모두 뗀 뒤 다시 시작합니다. 단독으로 `5`를 탭하면 정상 입력합니다.
-
-물리 마우스 클릭과 드래그는 통과시키고, 해당 클릭에 숫자 입력이 겹치지 않도록 현재 탭을 취소합니다. 활성 중에는 트랙패드의 일반 포인터 이동과 스크롤을 차단합니다. 트랙패드 접촉이 없을 때 외장 마우스 이동은 사용할 수 있습니다.
-
-## 오버레이와 햅틱
-
-오버레이를 물리 클릭해 드래그하면 위치가 저장됩니다. 화면 가장자리와 중앙에 접근하면 가이드와 스냅을 표시합니다. **일반** 탭의 **하단 중앙으로 초기화**로 위치를 되돌릴 수 있습니다.
-
-활성화할 때 접근성 API로 입력창 위치를 확인하고, 가능하면 입력창과 텍스트 커서를 피해 화면 안에 배치합니다. 앱이 위치 정보를 제공하지 않으면 저장한 위치 또는 기본 위치를 사용합니다. 입력 내용은 읽지 않습니다.
-
-등장·퇴장과 키 강조에 짧은 애니메이션을 사용하며 macOS의 **동작 줄이기** 설정을 따릅니다. 연속 입력 시 강조 유지 시간은 마지막 입력을 기준으로 갱신합니다.
-
-**햅틱** 탭에서 전체 햅틱과 접촉 시작, 입력 확정, `5` 중심 진입·이탈, 보정 적용 피드백을 각각 설정할 수 있습니다. `5`의 작은 중심 영역을 지날 때는 더 강한 햅틱을 주며, 손가락을 떼는 동작은 중심 이탈 피드백을 발생시키지 않습니다.
-
-설정을 변경하면 자동 저장합니다. 설정창을 열면 숫자판 모드를 해제합니다.
-
-## 실험적 좌표 보정
-
-**설정…** → **실험적** → **손가락 위치로 좌표 보정**을 켜면 사용할 수 있습니다. 기본값은 꺼짐입니다.
-
-- **세 손가락:** 왼쪽부터 `4·5·6`을 기준으로 배치를 조정합니다. 가운데 손가락에 `5` 중심을 고정하고 양쪽 손가락으로 회전과 크기를 맞춥니다.
-- **네 손가락:** **4손가락 보정 추가**를 켜면 가운데 두 손가락을 `×·−`의 기준점으로 사용합니다.
-- **보정 시점:** 닿을 때 또는 뗄 때 적용하도록 선택합니다. 기본값은 닿을 때입니다.
-- **다시 켤 때 보정 유지:** 마지막 보정을 이어서 사용합니다. 끄면 다음 활성화부터 기본 배치로 시작합니다.
-
-손가락을 댄 채 움직이면 위치·회전·크기가 실시간으로 따라옵니다. 키 모양과 비율을 유지하며 보정 동작 중에는 숫자를 입력하지 않습니다. 일부 손가락을 먼저 떼면 마지막 전체 접촉 배치를 유지합니다.
-
-보정은 조작키 방향별로 저장합니다. 기능을 끄면 기본 좌표로 돌아가며 저장된 보정은 유지합니다. **보정 초기화**는 현재 방향의 보정만 지웁니다. 조정 결과에 따라 일부 키가 트랙패드 영역 밖으로 나갈 수 있습니다.
-
-실험적 보정이 활성화된 동안 macOS의 다중 손가락 제스처를 차단하고, 트랙패드·스크롤 확대 설정을 일시 중단합니다. 해제·종료 시 기존 값을 복원하며 비정상 종료 시에는 다음 실행에서 복원합니다.
-
-## DMG 배포
-
-릴리즈 버전은 `VERSION` 파일에서 관리합니다. Apple Silicon·Intel 공용 앱과 Applications 폴더 바로가기가 포함된 DMG를 생성합니다.
-
-```sh
-# 로컬 확인용 DMG (임시 서명, 공증 없음)
-bash scripts/build-dmg.sh
-
-# 외부 배포용 DMG (Developer ID 서명 + Apple 공증)
-# 먼저 notarytool store-credentials로 공증 정보를 키체인에 저장합니다.
-SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-NOTARY_PROFILE="Numpad" \
-bash scripts/build-dmg.sh
-```
-
-생성 파일은 `dist/Numpad-0.0.1-universal.dmg`와 SHA-256 체크섬 파일입니다. DMG를 열고 **Numpad**를 **Applications**로 드래그해 설치합니다. 서명·공증한 앱도 처음 실행할 때 손쉬운 사용 권한은 직접 허용해야 합니다.
-
-## 개발
-
-```sh
-# 테스트
-swift test
-
-# 앱 번들 생성
-bash scripts/build-app.sh
-
-# 트랙패드 초기화, 터치 스트림 시작·종료, 접근성 권한 확인
-"dist/Numpad.app/Contents/MacOS/TrackpadNumpad" --diagnose
-
-# 설정창을 열어 시작
-"dist/Numpad.app/Contents/MacOS/TrackpadNumpad" --settings
-
-# 오버레이를 표시하고 2초 후 종료
-"dist/Numpad.app/Contents/MacOS/TrackpadNumpad" --smoke-test
-
-# 햅틱 한 번과 드라이버 반환 상태 확인
-"dist/Numpad.app/Contents/MacOS/TrackpadNumpad" --test-haptic
-```
-
-`--diagnose`는 GUI 없이 실행하며 권한을 요청하지 않습니다. 터치 스트림 시작 성공만으로 실제 탭이나 다른 앱으로의 키 전달까지 검증하지는 않습니다.
-
-| 경로 | 역할 |
-| --- | --- |
-| `Sources/CTrackpad` | MultitouchSupport 로딩, 터치 좌표 수신, 햅틱 |
-| `Sources/TrackpadCore` | 키 배치, 탭 판정, 기준 손가락, 좌표 보정, 오버레이 배치·스냅 |
-| `Sources/TrackpadNumpad` | 입력 제어, 단축키, 메뉴 막대, SwiftUI 오버레이와 설정 |
-| `Tests/TrackpadCoreTests` | 키 매핑, 반복 탭, 입력 취소, 보정과 배치 테스트 |
-| `scripts/build-app.sh` | 현재 Mac 아키텍처용 릴리스 빌드와 앱 번들 생성 |
-
-## 제약 사항
-
-- 터치 좌표와 일부 햅틱·확대 제어에 Apple 비공개 API를 사용합니다. macOS 버전에 따라 호환성이 바뀔 수 있으며 App Store 배포를 대상으로 하지 않습니다.
-- 기본 트랙패드를 사용하며 장치 선택·핫플러그는 지원하지 않습니다. 연결을 변경했다면 앱을 다시 실행하세요.
-- 탭하여 클릭하기와 물리 클릭은 압력·접촉 시점으로 구분합니다. 압력이 없는 외장 마우스를 트랙패드와 동시에 사용하면 탭 클릭으로 분류될 수 있습니다.
-- 숫자는 실제 숫자 키패드의 가상 키 코드로 전달합니다. 소수점과 단축키 해석은 대상 앱 및 언어 설정에 따라 달라질 수 있습니다.
-- 절전, 입력 감시 중단, 권한 철회, 보안 입력 감지 시 모드를 해제합니다. 앱을 다시 실행하면 꺼진 상태로 시작합니다.
-- 기본 빌드는 로컬 실행용 임시 서명을 사용합니다. 외부 배포에는 위의 Developer ID 서명·공증 명령을 사용하세요. 빌드나 위치 변경 후 권한이 동작하지 않으면 손쉬운 사용 목록에서 앱을 제거하고 다시 추가하세요.
-- 네트워크 접근이나 입력 기록 파일 저장 기능은 없습니다.
-
-## 참고 자료
-
-- [OpenMultitouchSupport](https://github.com/Kyome22/OpenMultitouchSupport)
-- [Multitouch ABI](https://github.com/ZaynJarvis/trackpad-studio/blob/master/Sources/CMultitouchShim/include/CMultitouchShim.h)
-- [액추에이터 호출 예제](https://gist.github.com/niw/b120b460e854ec10cefeeb60784f5dbb)
-- [Apple CGEvent](https://developer.apple.com/documentation/coregraphics/cgevent)
-- [Apple 햅틱 API](https://developer.apple.com/documentation/appkit/nshapticfeedbackperformer)
+Found a bug or have an idea? [Open an issue](https://github.com/yeonfish6040/Numpad/issues) with your Mac model, macOS version, and steps to reproduce it. Translation improvements are welcome too.
