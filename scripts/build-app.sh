@@ -26,8 +26,8 @@ cat > "$bundle/Contents/Info.plist" <<'PLIST'
     <key>CFBundleIdentifier</key><string>com.yftech.TrackpadNumpad</string>
     <key>CFBundleExecutable</key><string>TrackpadNumpad</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.0.3</string>
-    <key>CFBundleVersion</key><string>3</string>
+    <key>CFBundleShortVersionString</key><string>0.0.4</string>
+    <key>CFBundleVersion</key><string>4</string>
     <key>CFBundleDevelopmentRegion</key><string>en</string>
     <key>CFBundleLocalizations</key><array><string>en</string><string>ko</string></array>
     <key>CFBundleIconFile</key><string>AppIcon</string>

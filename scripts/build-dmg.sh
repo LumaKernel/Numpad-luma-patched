@@ -33,15 +33,35 @@ ditto "$bundle" "$staging/volume/Numpad.app"
 ln -s /Applications "$staging/volume/Applications"
 hdiutil create -volname Numpad -srcfolder "$staging/volume" -format UDZO -ov "$image"
 
+# Some macOS versions leave the image creation device attached. Release only
+# devices belonging to this output image before signing or notarizing it.
+devices="$(hdiutil info -plist | /usr/bin/python3 -c '
+import os, plistlib, sys
+target = os.path.realpath(sys.argv[1])
+for item in plistlib.load(sys.stdin.buffer).get("images", []):
+    if os.path.realpath(item.get("image-path", "")) == target:
+        for entity in item.get("system-entities", []):
+            if entity.get("dev-entry"):
+                print(entity["dev-entry"])
+                break
+' "$image")"
+while IFS= read -r device; do
+    if [[ -n "$device" ]]; then hdiutil detach "$device"; fi
+done <<< "$devices"
+
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
     codesign --force --timestamp --sign "$SIGN_IDENTITY" "$image"
     codesign --verify --strict "$image"
 fi
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
-    xcrun notarytool submit "$image" --keychain-profile "$NOTARY_PROFILE" --wait
+    # Apple processes nested containers and issues a ticket for the signed DMG.
+    # Submitting a ZIP also avoids local DMG preflight stalls in notarytool.
+    ditto -c -k --keepParent "$image" "$staging/Numpad-dmg.zip"
+    xcrun notarytool submit "$staging/Numpad-dmg.zip" --keychain-profile "$NOTARY_PROFILE" --wait
     xcrun stapler staple "$image"
     xcrun stapler validate "$image"
     spctl --assess --type execute --verbose=2 "$bundle"
+    spctl --assess --type open --context context:primary-signature --verbose=2 "$image"
 else
     echo "Local test build: not notarized. Do not publish as a notarized release." >&2
 fi
