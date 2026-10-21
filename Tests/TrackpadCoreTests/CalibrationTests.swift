@@ -56,24 +56,26 @@ final class CalibrationTests: XCTestCase {
         }
     }
 
-    func testUnevenFingerSpacingFitsClosestCentersWithoutShear() throws {
-        let source = [PadPoint(x: 0.2, y: 0.4), .init(x: 0.43, y: 0.43), .init(x: 0.7, y: 0.42)]
-        let transform = try PadTransform.calibrating(source, layout: .left)
-        let display = transform.inverse
-        XCTAssertTrue(transform.isSimilarity)
-        let centers = ["4", "5", "6"].map { display.apply(KeypadLayout.left.center(of: $0)) }
-        assertPoint(centers[1], .init(x: source.map(\.x).reduce(0, +) / 3, y: source.map(\.y).reduce(0, +) / 3))
-        XCTAssertEqual(centers[1].x - centers[0].x, centers[2].x - centers[1].x, accuracy: 1e-9)
-        XCTAssertEqual(centers[1].y - centers[0].y, centers[2].y - centers[1].y, accuracy: 1e-9)
-        let aspect = PadGeometry.aspectRatio
-        func error(_ offset: Double) -> Double {
-            zip(centers, source).reduce(0) { sum, pair in
-                let dx = (pair.0.x + offset - pair.1.x) * aspect, dy = pair.0.y - pair.1.y
-                return sum + dx * dx + dy * dy
-            }
+    func testMiddleFingerPinsFiveAndOuterFingersOnlySetScaleAndRotation() throws {
+        for layout in KeypadLayout.allCases {
+            let source = [PadPoint(x: 0.2, y: 0.4), .init(x: 0.43, y: 0.53), .init(x: 0.7, y: 0.42)]
+            let transform = try PadTransform.calibrating(source, layout: layout, preserveOrder: true)
+            XCTAssertTrue(transform.isSimilarity)
+            assertPoint(transform.apply(source[1]), layout.center(of: "5"))
+            let movedMiddle = [source[0], PadPoint(x: 0.49, y: 0.62), source[2]]
+            let moved = try PadTransform.calibrating(movedMiddle, layout: layout, preserveOrder: true)
+            assertPoint(moved.apply(movedMiddle[1]), layout.center(of: "5"))
+            // Moving the anchor changes translation, never rotation or scale.
+            XCTAssertEqual(transform.a, moved.a, accuracy: 1e-9)
+            XCTAssertEqual(transform.b, moved.b, accuracy: 1e-9)
+            XCTAssertEqual(transform.c, moved.c, accuracy: 1e-9)
+            XCTAssertEqual(transform.d, moved.d, accuracy: 1e-9)
+            let display = transform.inverse
+            let four = display.apply(layout.center(of: "4"))
+            let six = display.apply(layout.center(of: "6"))
+            XCTAssertEqual(six.x - four.x, source[2].x - source[0].x, accuracy: 1e-9)
+            XCTAssertEqual(six.y - four.y, source[2].y - source[0].y, accuracy: 1e-9)
         }
-        XCTAssertLessThan(error(0), error(0.01))
-        XCTAssertLessThan(error(0), error(-0.01))
     }
 
     func testFourFingerMiddleTwoMatchExactlyWithUniformScale() throws {
@@ -81,8 +83,8 @@ final class CalibrationTests: XCTestCase {
         for layout in KeypadLayout.allCases {
             let fitted = try PadTransform.calibrating([source[3], source[1], source[0], source[2]], layout: layout)
             XCTAssertTrue(fitted.isSimilarity)
-            assertPoint(fitted.apply(source[1]), layout.center(of: "⌫"))
-            assertPoint(fitted.apply(source[2]), layout.center(of: "÷"))
+            assertPoint(fitted.apply(source[1]), layout.center(of: "×"))
+            assertPoint(fitted.apply(source[2]), layout.center(of: "−"))
         }
     }
 
@@ -146,11 +148,11 @@ final class CalibrationTests: XCTestCase {
         func point(_ offset: Double) -> [Touch] { [touch(1, 0.7 + offset, 0.625)] }
         XCTAssertFalse(feedback.process(point(0.1)))
         XCTAssertFalse(feedback.process(point(0.03)))
-        XCTAssertTrue(feedback.process(point(0.02)))
-        XCTAssertFalse(feedback.process(point(0.033)))
-        XCTAssertTrue(feedback.process(point(0.04)))
+        XCTAssertTrue(feedback.process(point(0.003)))
+        XCTAssertFalse(feedback.process(point(0.009)))
+        XCTAssertTrue(feedback.process(point(0.012)))
         XCTAssertFalse(feedback.process(point(0.03)))
-        XCTAssertTrue(feedback.process(point(0.02)))
+        XCTAssertTrue(feedback.process(point(0.003)))
         XCTAssertFalse(feedback.process([]))
     }
 }

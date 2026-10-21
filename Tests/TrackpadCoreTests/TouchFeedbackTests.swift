@@ -5,13 +5,25 @@ final class TouchFeedbackTests: XCTestCase {
     private let anchor = Touch(id: 1, x: 0.3, y: 0.625)
     private let seven = Touch(id: 2, x: 0.1, y: 0.875)
 
+    func testCenterEntryAndExitAreReportedSeparately() {
+        var feedback = CenterCrossingFeedback()
+        let outside = Touch(id: 7, x: 0.4, y: 0.625)
+        let center = Touch(id: 7, x: 0.3, y: 0.625)
+        XCTAssertTrue(feedback.processEvents([outside]).isEmpty)
+        XCTAssertEqual(feedback.processEvents([center]), .entered)
+        XCTAssertTrue(feedback.processEvents([center]).isEmpty)
+        XCTAssertEqual(feedback.processEvents([outside]), .exited)
+        XCTAssertTrue(feedback.processEvents([]).isEmpty)
+        XCTAssertTrue(feedback.processEvents([center]).isEmpty)
+    }
+
     func testCenterCrossingPulsesOnceAndRequiresLeavingOuterRegion() {
         var feedback = CenterCrossingFeedback()
         XCTAssertFalse(feedback.process([seven]))
         let center = Touch(id: 2, x: 0.3, y: 0.625)
         XCTAssertTrue(feedback.process([center]))
         XCTAssertFalse(feedback.process([center]))
-        XCTAssertFalse(feedback.process([Touch(id: 2, x: 0.326, y: 0.625)]))
+        XCTAssertFalse(feedback.process([Touch(id: 2, x: 0.306, y: 0.625)]))
         XCTAssertFalse(feedback.process([center]))
         XCTAssertTrue(feedback.process([seven])) // Exit produces feedback too.
         XCTAssertTrue(feedback.process([center]))
@@ -22,8 +34,8 @@ final class TouchFeedbackTests: XCTestCase {
     func testCenterFeedbackTracksMovingFingerAlongsideAnchor() {
         var feedback = CenterCrossingFeedback()
         XCTAssertFalse(feedback.process([anchor, seven]))
-        XCTAssertTrue(feedback.process([anchor, Touch(id: 2, x: 0.31, y: 0.625)]))
-        XCTAssertFalse(feedback.process([anchor, Touch(id: 2, x: 0.31, y: 0.625)]))
+        XCTAssertTrue(feedback.process([anchor, Touch(id: 2, x: 0.303, y: 0.625)]))
+        XCTAssertFalse(feedback.process([anchor, Touch(id: 2, x: 0.303, y: 0.625)]))
     }
 
     func testRestingAnchorAllowsRepeatedTapsAndDoesNotTypeOnLift() {

@@ -138,19 +138,22 @@ static bool initializeActuator(void) {
     return actuator != NULL;
 }
 
-bool TPHapticClick(void) {
+static bool performHaptic(int32_t pattern) {
     if (!initializeActuator()) return false;
     if (openActuator(actuator) != kIOReturnSuccess) {
         TPHapticShutdown(); return false;
     }
-    // Predefined weak pulse; no custom waveform or continuous vibration.
-    IOReturn result = actuate(actuator, 3, 0, 0.0f, 0.0f);
+    // Predefined pulse; no custom waveform or continuous vibration.
+    IOReturn result = actuate(actuator, pattern, 0, 0.0f, 0.0f);
     IOReturn closed = closeActuator(actuator);
     if (result != kIOReturnSuccess || closed != kIOReturnSuccess) {
         TPHapticShutdown(); return false;
     }
     return true;
 }
+
+bool TPHapticClick(void) { return performHaptic(3); }
+bool TPHapticCenter(void) { return performHaptic(6); }
 
 void TPHapticShutdown(void) {
     if (actuator) { CFRelease(actuator); actuator = NULL; }

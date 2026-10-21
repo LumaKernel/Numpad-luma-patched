@@ -24,16 +24,27 @@ final class TouchStream {
 }
 
 final class InputService {
+    private var earlyTap: CFMachPort?
+    private var earlySource: CFRunLoopSource?
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var clicks = ClickFilter()
     private var lastTrackpadTouch = -Double.infinity
+    private let screenZoom = ScreenZoomSuppression()
+    private var threeFingerDrag = ThreeFingerDragSuppression()
+    var blocksSystemGestures = false {
+        didSet {
+            screenZoom.update(enabled: blocksSystemGestures)
+            if !blocksSystemGestures { threeFingerDrag.reset() }
+        }
+    }
     var onEscape: (() -> Void)?
     var onFailure: (() -> Void)?
     var onPhysicalClick: (() -> Void)?
 
     func updateTouches(_ touches: [Touch]) {
         if !touches.isEmpty { lastTrackpadTouch = ProcessInfo.processInfo.systemUptime }
+        threeFingerDrag.update(contactCount: touches.count, enabled: blocksSystemGestures)
     }
 
     func start() -> Bool {
@@ -41,7 +52,11 @@ final class InputService {
         let types: [CGEventType] = [.mouseMoved, .leftMouseDown, .leftMouseUp,
             .rightMouseDown, .rightMouseUp, .otherMouseDown, .otherMouseUp,
             .leftMouseDragged, .rightMouseDragged, .otherMouseDragged, .scrollWheel, .keyDown]
+        // Quartz does not expose names for these WindowServer gesture events.
+        // 29: gesture envelope, 30: Dock control/magnification, 31: fluid swipe.
+        // See https://github.com/oomol-lab/dockswipe for the Dock event pathway.
         let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
+            | SystemGestureFilter.eventMask
         guard let port = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
             options: .defaultTap, eventsOfInterest: mask, callback: { _, type, event, context in
                 guard let context else { return Unmanaged.passUnretained(event) }
@@ -58,18 +73,28 @@ final class InputService {
                     }
                     return Unmanaged.passUnretained(event)
                 }
+                if SystemGestureFilter.isGesture(type.rawValue) {
+                    // Gate on mode, not asynchronous raw contact counts: the
+                    // WindowServer can deliver the first gesture before touches.
+                    return service.blocksSystemGestures ? nil : Unmanaged.passUnretained(event)
+                }
                 let button = Int(event.getIntegerValueField(.mouseEventButtonNumber))
                 switch type {
+                case .mouseMoved:
+                    // Keep raw trackpad gestures from moving the pointer, while
+                    // an external mouse can still reach and drag the overlay.
+                    return ProcessInfo.processInfo.systemUptime - service.lastTrackpadTouch >= 0.25 ? Unmanaged.passUnretained(event) : nil
                 case .leftMouseDown, .rightMouseDown, .otherMouseDown:
                     let allow = service.clicks.down(button: button,
                         pressure: event.getDoubleValueField(.mouseEventPressure),
-                        recentTrackpadTouch: ProcessInfo.processInfo.systemUptime - service.lastTrackpadTouch < 0.25)
+                        recentTrackpadTouch: ProcessInfo.processInfo.systemUptime - service.lastTrackpadTouch < 0.25,
+                        forceSuppress: service.threeFingerDrag.active)
                     if allow { service.onPhysicalClick?() }
                     return allow ? Unmanaged.passUnretained(event) : nil
                 case .leftMouseUp, .rightMouseUp, .otherMouseUp:
                     return service.clicks.up(button: button) ? Unmanaged.passUnretained(event) : nil
                 case .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
-                    return service.clicks.drag(button: button) ? Unmanaged.passUnretained(event) : nil
+                    return !service.threeFingerDrag.active && service.clicks.drag(button: button) ? Unmanaged.passUnretained(event) : nil
                 default:
                     return nil
                 }
@@ -77,6 +102,25 @@ final class InputService {
         guard let runSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, port, 0) else {
             CFMachPortInvalidate(port); return false
         }
+        // Screen zoom can consume scroll/gesture packets before session taps.
+        // Filter at the HID head as well, without moving ordinary key/click handling.
+        let earlyMask = SystemGestureFilter.eventMask | (CGEventMask(1) << CGEventType.scrollWheel.rawValue)
+        guard let early = CGEvent.tapCreate(tap: .cghidEventTap, place: .headInsertEventTap,
+            options: .defaultTap, eventsOfInterest: earlyMask, callback: { _, type, event, context in
+                guard let context else { return Unmanaged.passUnretained(event) }
+                let service = Unmanaged<InputService>.fromOpaque(context).takeUnretainedValue()
+                if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+                    service.onFailure?()
+                    return Unmanaged.passUnretained(event)
+                }
+                return service.blocksSystemGestures ? nil : Unmanaged.passUnretained(event)
+            }, userInfo: Unmanaged.passUnretained(self).toOpaque()),
+            let earlyRunSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, early, 0) else {
+                CFMachPortInvalidate(port); return false
+        }
+        earlyTap = early; earlySource = earlyRunSource
+        CFRunLoopAddSource(CFRunLoopGetMain(), earlyRunSource, .commonModes)
+        CGEvent.tapEnable(tap: early, enable: true)
         tap = port; source = runSource
         CFRunLoopAddSource(CFRunLoopGetMain(), runSource, .commonModes)
         CGEvent.tapEnable(tap: port, enable: true)
@@ -84,10 +128,15 @@ final class InputService {
     }
 
     func stop() {
+        screenZoom.restore()
+        if let earlyTap { CGEvent.tapEnable(tap: earlyTap, enable: false); CFMachPortInvalidate(earlyTap) }
+        if let earlySource { CFRunLoopRemoveSource(CFRunLoopGetMain(), earlySource, .commonModes) }
+        earlyTap = nil; earlySource = nil
         if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         tap = nil; source = nil
         clicks.reset(); lastTrackpadTouch = -Double.infinity
+        threeFingerDrag.reset(); blocksSystemGestures = false
     }
 
     func send(_ key: PadKey) {

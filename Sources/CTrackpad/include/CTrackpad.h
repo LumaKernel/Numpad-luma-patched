@@ -11,6 +11,8 @@ bool TPStart(TPCallback callback, void *context);
 void TPStop(void);
 // Main-thread only. Uses a short, weak trackpad actuation at confirmed input.
 bool TPHapticClick(void);
+// Stronger predefined pulse for entering/leaving the 5 center.
+bool TPHapticCenter(void);
 void TPHapticShutdown(void);
 const char *TPError(void);
 #endif

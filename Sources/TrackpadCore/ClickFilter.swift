@@ -3,8 +3,8 @@ public struct ClickFilter {
     private var passed: [Int: Bool] = [:]
     public init() {}
     public mutating func reset() { passed.removeAll() }
-    public mutating func down(button: Int, pressure: Double, recentTrackpadTouch: Bool) -> Bool {
-        let allow = pressure > 0 || !recentTrackpadTouch
+    public mutating func down(button: Int, pressure: Double, recentTrackpadTouch: Bool, forceSuppress: Bool = false) -> Bool {
+        let allow = !forceSuppress && (pressure > 0 || !recentTrackpadTouch)
         passed[button] = allow
         return allow
     }

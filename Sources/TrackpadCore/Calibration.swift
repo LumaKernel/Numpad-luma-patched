@@ -4,6 +4,10 @@ public enum PadGeometry {
     public static let aspectRatio = 1.7
 }
 
+public enum CalibrationTiming: String, CaseIterable, Sendable {
+    case touchDown, liftOff
+}
+
 public struct PadPoint: Codable, Equatable, Sendable {
     public let x: Double
     public let y: Double
@@ -99,11 +103,11 @@ public struct PadTransform: Codable, Equatable, Sendable {
             abs(a * a + (c / aspect) * (c / aspect) - 1) < 1e-8 && abs(a * d - b * c - 1) < 1e-8
     }
 
-    public static func calibrating(_ points: [PadPoint], layout: KeypadLayout) throws -> PadTransform {
+    public static func calibrating(_ points: [PadPoint], layout: KeypadLayout, preserveOrder: Bool = false, reference: PadTransform = .identity) throws -> PadTransform {
         guard points.allSatisfy({ (0...1).contains($0.x) && (0...1).contains($0.y) }) else {
             throw CalibrationError.invalidPoints
         }
-        let sorted = points.sorted { $0.x == $1.x ? $0.y < $1.y : $0.x < $1.x }
+        let sorted = preserveOrder ? points : FingerOrdering.ordered(points, reference: reference)
         for i in sorted.indices {
             for j in sorted.indices where j > i {
                 guard hypot((sorted[i].x - sorted[j].x) * PadGeometry.aspectRatio, sorted[i].y - sorted[j].y) >= 0.025 else {
@@ -114,13 +118,20 @@ public struct PadTransform: Codable, Equatable, Sendable {
         let placement: PadTransform
         switch sorted.count {
         case 3:
-            placement = try similarity(source: ["4", "5", "6"].map { layout.center(of: $0) }, target: sorted)
+            // Outer fingers determine only rotation and uniform scale. The
+            // middle contact is the translation anchor, exactly at key 5.
+            let outer = try similarity(source: ["4", "6"].map { layout.center(of: $0) },
+                                       target: [sorted[0], sorted[2]])
+            let center = layout.center(of: "5")
+            placement = PadTransform(a: outer.a, b: outer.b, c: outer.c, d: outer.d,
+                tx: sorted[1].x - outer.a * center.x - outer.b * center.y,
+                ty: sorted[1].y - outer.c * center.x - outer.d * center.y)
         case 4:
-            placement = try similarity(source: ["⌫", "÷"].map { layout.center(of: $0) }, target: Array(sorted[1...2]))
+            placement = try similarity(source: ["×", "−"].map { layout.center(of: $0) }, target: Array(sorted[1...2]))
         default: throw CalibrationError.invalidPoints
         }
         // Fit displayed key centers to physical fingers, then invert for input.
-        // This minimizes the visible finger-to-center error when spacing differs.
+        // Three-finger placement keeps 5 pinned even with uneven finger spacing.
         let transform = placement.inverse
         guard transform.isSimilarity else { throw CalibrationError.invalidPoints }
         return transform

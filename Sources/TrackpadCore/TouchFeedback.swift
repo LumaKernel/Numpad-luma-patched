@@ -15,6 +15,13 @@ private struct FiveRegion {
     }
 }
 
+public struct CenterCrossingEvents: OptionSet {
+    public let rawValue: Int
+    public init(rawValue: Int) { self.rawValue = rawValue }
+    public static let entered = Self(rawValue: 1)
+    public static let exited = Self(rawValue: 2)
+}
+
 /// A center detent for each continuous contact, with separate entry/exit radii
 /// so sensor noise at the boundary cannot cause repeated pulses.
 public struct CenterCrossingFeedback {
@@ -24,21 +31,25 @@ public struct CenterCrossingFeedback {
     public mutating func reset() { contacts.removeAll() }
 
     public mutating func process(_ touches: [Touch]) -> Bool {
+        !processEvents(touches).isEmpty
+    }
+
+    public mutating func processEvents(_ touches: [Touch]) -> CenterCrossingEvents {
         var next: [Int32: Bool] = [:]
-        var entered = false
+        var events: CenterCrossingEvents = []
         for touch in touches where touch.x.isFinite && touch.y.isFinite {
             let distance = region.distance(touch)
             if let wasInside = contacts[touch.id] {
-                let inside = wasInside ? distance < 0.18 : distance <= 0.12
-                if inside != wasInside { entered = true }
+                let inside = wasInside ? distance < 0.055 : distance <= 0.035
+                if inside != wasInside { events.insert(inside ? .entered : .exited) }
                 next[touch.id] = inside
             } else {
                 // Landing directly on 5 is a tap, not a crossing.
-                next[touch.id] = distance <= 0.12
+                next[touch.id] = distance <= 0.035
             }
         }
         contacts = next
-        return entered
+        return events
     }
 }
 

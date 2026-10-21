@@ -44,6 +44,7 @@ struct KeypadView: View {
                         .frame(width: width * CGFloat(key.columns) + gap * CGFloat(key.columns - 1),
                                height: height * CGFloat(key.rows) + gap * CGFloat(key.rows - 1))
                         .offset(x: CGFloat(key.column) * (width + gap), y: CGFloat(key.row) * (height + gap))
+                        .animation(.easeOut(duration: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.08), value: active)
                         .accessibilityLabel(key.label)
                 }
             }
@@ -59,6 +60,7 @@ struct GuideView: View {
                 ZStack(alignment: .topLeading) {
                     KeypadView(highlighted: model.highlighted, compact: true, layout: model.controlSide)
                         .transformEffect(model.effectiveTransform.inverse.screenTransform(size: geometry.size))
+                        .animation(.easeOut(duration: (NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || model.calibrationTracking) ? 0 : 0.18), value: model.effectiveTransform)
                     ForEach(Array(model.touches.enumerated()), id: \.offset) { _, touch in
                         Circle().fill(mint.opacity(0.25))
                             .overlay(Circle().strokeBorder(mint.opacity(0.8), lineWidth: 1))
@@ -83,6 +85,10 @@ struct GuideView: View {
                 .shadow(color: .black.opacity(0.8), radius: 2, y: 1)
         }
         .padding(8)
+        .overlay {
+            OverlayDragSurface(began: { model.beginOverlayDrag() },
+                moved: { model.moveOverlay(to: $0, pointer: $1) }, ended: { model.endOverlayDrag() })
+        }
         .environment(\.colorScheme, .dark)
     }
 }
@@ -97,6 +103,34 @@ private extension PadTransform {
     }
 }
 
+struct SnapGuideView: View {
+    @ObservedObject var model: AppController
+    var body: some View {
+        GeometryReader { geometry in
+            if let snap = model.overlaySnapPreview {
+                let bounds = model.overlaySnapBounds
+                Path { path in
+                    if let x = snap.verticalGuide {
+                        let local = x - bounds.minX
+                        path.move(to: CGPoint(x: local, y: 0))
+                        path.addLine(to: CGPoint(x: local, y: geometry.size.height))
+                    }
+                    if let y = snap.horizontalGuide {
+                        let local = bounds.maxY - y
+                        path.move(to: CGPoint(x: 0, y: local))
+                        path.addLine(to: CGPoint(x: geometry.size.width, y: local))
+                    }
+                }.stroke(mint.opacity(0.55), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                RoundedRectangle(cornerRadius: 20)
+                    .strokeBorder(mint.opacity(0.35), lineWidth: 1)
+                    .background(mint.opacity(0.035), in: RoundedRectangle(cornerRadius: 20))
+                    .frame(width: snap.frame.width, height: snap.frame.height)
+                    .position(x: snap.frame.midX - bounds.minX, y: bounds.maxY - snap.frame.midY)
+            }
+        }
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject var model: AppController
     var body: some View {
@@ -108,6 +142,7 @@ struct SettingsView: View {
             }
             TabView {
                 generalSettings.tabItem { Text("일반") }
+                hapticSettings.tabItem { Text("햅틱") }
                 experimentalSettings.tabItem { Text("실험적") }
             }
             HStack {
@@ -139,15 +174,42 @@ struct SettingsView: View {
                         .background(.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 14))
                 }
             Divider()
-            VStack(alignment: .leading, spacing: 8) {
-                Toggle("다시 켤 때 보정 유지", isOn: $model.keepCalibrationOnReactivate)
-                    .toggleStyle(.switch).tint(mint)
-                Text("켜면 마지막 보정을 이어 씁니다. 끄면 숫자판을 켤 때마다 기본 배치로 시작합니다. 변경은 다음 활성화부터 적용됩니다.")
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text("오버레이 위치").font(.system(size: 12))
+                Spacer()
+                Button("하단 중앙으로 초기화") { model.resetOverlayPosition() }
             }
+            Text("오버레이를 눌러 드래그하면 위치가 저장됩니다. 활성화할 때 입력창을 가리면 화면 안의 빈자리로 이동합니다.")
+                .font(.system(size: 11)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }.padding(20)
+    }
+
+    private var hapticSettings: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Toggle("햅틱 사용", isOn: $model.hapticsEnabled)
+                .font(.headline)
+            Divider()
+            VStack(alignment: .leading, spacing: 16) {
+                Text("숫자·조작키 입력").font(.headline)
+                Toggle("손가락을 댈 때", isOn: $model.hapticTouchDown)
+                Toggle("손가락을 떼어 입력이 확정될 때", isOn: $model.hapticInputConfirmed)
+                Divider()
+                Text("5 중심 안내").font(.headline)
+                Toggle("중심 영역에 들어갈 때", isOn: $model.hapticFiveEnter)
+                Toggle("중심 영역에서 벗어날 때", isOn: $model.hapticFiveExit)
+                Text("작은 중심 영역을 지날 때 강한 햅틱을 줍니다.")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                Divider()
+                Text("실험적 보정").font(.headline)
+                Toggle("손가락 보정이 적용될 때", isOn: $model.hapticCalibration)
+            }
+            .disabled(!model.hapticsEnabled)
+            Spacer(minLength: 0)
+        }
+        .toggleStyle(.switch).tint(mint)
+        .padding(20)
     }
 
     private var experimentalSettings: some View {
@@ -161,13 +223,33 @@ struct SettingsView: View {
                                 .background(mint.opacity(0.1), in: Capsule())
                         }
                     }.toggleStyle(.switch).tint(mint)
-                    Text("숫자판을 켠 뒤 세 손가락을 동시에 탭하세요. 왼쪽부터 4·5·6의 중앙에 최대한 가깝게 맞춥니다. 이동·회전·균일한 크기 조절을 적용하며 키 모양과 비율은 유지합니다.")
+                    Text("숫자판을 켠 뒤 세 손가락을 동시에 대세요. 가운데 손가락을 5의 중심에 고정하고 양쪽 손가락으로 회전과 크기를 맞춥니다. 이동·회전·균일한 크기 조절을 적용하며 키 모양과 비율은 유지합니다.")
                         .font(.system(size: 12)).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
                     VStack(alignment: .leading, spacing: 8) {
+                        Picker("보정 시점", selection: $model.calibrationTiming) {
+                            Text("닿을 때").tag(CalibrationTiming.touchDown)
+                            Text("뗄 때").tag(CalibrationTiming.liftOff)
+                        }.pickerStyle(.segmented)
+                        Text("기본은 닿을 때입니다. 세 손가락 또는 네 손가락을 댄 채 드래그하면 배치가 이동·회전·크기에 실시간으로 따라옵니다. 보정 중에는 macOS 드래그·확대/축소·데스크탑 전환 제스처를 차단합니다.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 12)
+                    .disabled(!model.experimentalCalibration)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle("다시 켤 때 보정 유지", isOn: $model.keepCalibrationOnReactivate)
+                            .toggleStyle(.switch).tint(mint)
+                        Text("켜면 마지막 보정을 이어 씁니다. 끄면 숫자판을 켤 때마다 기본 배치로 시작합니다. 변경은 다음 활성화부터 적용됩니다.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.leading, 12)
+                    .disabled(!model.experimentalCalibration)
+                    VStack(alignment: .leading, spacing: 8) {
                         Toggle("4손가락 보정 추가", isOn: $model.fourFingerCalibration)
                             .toggleStyle(.switch).tint(mint)
-                        Text("네 손가락을 동시에 탭하면 가운데 두 손가락을 왼쪽부터 삭제·÷에 맞춥니다. 두 키의 중앙이 손가락에 오도록 이동·회전·균일한 크기 조절을 적용합니다.")
+                        Text("네 손가락을 동시에 대면 가운데 두 손가락을 왼쪽부터 ×·−에 맞춥니다. 두 키의 중앙이 손가락에 오도록 이동·회전·균일한 크기 조절을 적용합니다.")
                             .font(.system(size: 12)).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
