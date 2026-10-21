@@ -98,6 +98,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     private var screenObserver: NSObjectProtocol?
     private var overlayDragging = false
     private var previewRevision = 0
+    private var highlightClearWork: DispatchWorkItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         configurationChanged()
@@ -215,11 +216,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
                 self.input.send(key)
                 if self.hapticInputConfirmed { self.playHaptic() }
                 self.lastKey = key.label
-                self.highlighted = key.id
+                self.showKeyHighlight(key.id)
                 if self.sound { NSSound(named: "Tink")?.play() }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.16) { [weak self] in
-                    if self?.generation == session { self?.highlighted = nil }
-                }
             }
         }
         guard stream?.start() == true else {
@@ -249,7 +247,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         snapPanel?.orderOut(nil); overlaySnapPreview = nil; overlayDragging = false
         input.stop()
         stream?.stop(); stream = nil
-        recognizer.reset(); centerFeedback.reset(); calibrationGesture.reset(); highlighted = nil; touches = []
+        recognizer.reset(); centerFeedback.reset(); calibrationGesture.reset(); clearKeyHighlight(); touches = []
         previewRevision += 1
         activationInput = nil
         hideOverlay()
@@ -261,13 +259,28 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         "calibration.similarity456.v1." + controlSide.rawValue
     }
 
+    private func showKeyHighlight(_ keyID: UInt16) {
+        // Each input owns its full highlight interval, including repeated keys.
+        highlightClearWork?.cancel()
+        highlighted = keyID
+        let work = DispatchWorkItem { [weak self] in self?.clearKeyHighlight() }
+        highlightClearWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.16, execute: work)
+    }
+
+    private func clearKeyHighlight() {
+        highlightClearWork?.cancel()
+        highlightClearWork = nil
+        highlighted = nil
+    }
+
     private func resetInputState() {
         calibrationTracking = false; calibrationBaseline = nil
         recognizer = AnchoredTapRecognizer(layout: controlSide)
         recognizer.reset(waitForLift: !touches.isEmpty)
         centerFeedback = CenterCrossingFeedback(layout: controlSide)
         calibrationGesture.reset(waitForLift: !touches.isEmpty)
-        highlighted = nil
+        clearKeyHighlight()
     }
 
     private func configurationChanged() {

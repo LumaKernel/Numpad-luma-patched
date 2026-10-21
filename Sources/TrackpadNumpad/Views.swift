@@ -44,7 +44,8 @@ struct KeypadView: View {
                         .frame(width: width * CGFloat(key.columns) + gap * CGFloat(key.columns - 1),
                                height: height * CGFloat(key.rows) + gap * CGFloat(key.rows - 1))
                         .offset(x: CGFloat(key.column) * (width + gap), y: CGFloat(key.row) * (height + gap))
-                        .animation(.easeOut(duration: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : 0.08), value: active)
+                        .animation(active || NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+                            ? nil : .easeOut(duration: 0.08), value: active)
                         .accessibilityLabel(key.label)
                 }
             }
