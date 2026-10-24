@@ -30,6 +30,7 @@ static void *library;
 #define MAX_DEVICES 8
 static void *devices[MAX_DEVICES];
 static int32_t deviceCount;
+static CFArrayRef deviceList; // kept alive so device pointers remain valid
 
 static CFArrayRef (*createList)(void);
 static void *(*createDefault)(void);
@@ -45,7 +46,8 @@ static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static const char *errorMessage = "";
 
 static int receiveFrame(void *sender, Contact *contacts, int count, double timestamp, int frame) {
-    (void)sender; (void)frame;
+    (void)frame;
+    (void)sender;
     if (count < 0 || count > 32 || (count && !contacts)) return 0;
     TPTouch touches[32];
     int active = 0;
@@ -91,9 +93,9 @@ bool TPInitialize(void) {
                 void *dev = (void *)CFArrayGetValueAtIndex(list, i);
                 if (dev) devices[deviceCount++] = dev;
             }
-            // CFArray from MTDeviceCreateList is owned by us, but the devices
-            // inside are retained by the framework. Release the container only.
-            CFRelease(list);
+            // Keep the list alive: device pointers are owned by the CFArray
+            // and become invalid if the array is released.
+            deviceList = list;
         }
     }
 
