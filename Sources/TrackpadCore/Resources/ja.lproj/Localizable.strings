@@ -43,6 +43,7 @@
 "Place four fingers together. The middle two align with × and − from left to right, adjusting position, rotation, and scale to match their key centers." = "4本の指を同時に置きます。中央の2本が左から×・−に揃い、位置・回転・スケールがキーの中心に合うよう調整されます。";
 "Please allow Accessibility access again." = "アクセシビリティを再度許可してください。";
 "Press Esc to exit" = "Esc で解除";
+"Press modifiers together, or modifier + key…" = "修飾キーを同時に押すか、修飾キー + キーを押してください…";
 "Preview Keypad" = "キー配置をプレビュー";
 "Preview Overlay" = "オーバーレイをプレビュー";
 "Quit NumpadLuma" = "NumpadLuma を終了";

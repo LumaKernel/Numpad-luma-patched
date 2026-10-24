@@ -355,7 +355,10 @@ struct PressStyle: ButtonStyle {
 struct ShortcutRecorderView: View {
     @Binding var shortcut: CustomShortcut
     @State private var recording = false
-    @State private var monitor: Any?
+    @State private var keyMonitor: Any?
+    @State private var flagsMonitor: Any?
+    @State private var peakDeviceBits: UInt64 = 0
+    @State private var liveDisplay = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -368,7 +371,7 @@ struct ShortcutRecorderView: View {
                 .foregroundStyle(recording ? .orange : mint)
             }
             if recording {
-                Text(L("Press a key combination (modifier + key)…"))
+                Text(liveDisplay.isEmpty ? L("Press modifiers together, or modifier + key…") : liveDisplay)
                     .font(.system(size: 12))
                     .foregroundStyle(mint)
                     .padding(.horizontal, 12).padding(.vertical, 8)
@@ -381,13 +384,30 @@ struct ShortcutRecorderView: View {
 
     private func startRecording() {
         recording = true
-        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+        peakDeviceBits = 0
+        liveDisplay = ""
+        // Monitor modifier key changes to support modifier-only shortcuts.
+        flagsMonitor = NSEvent.addLocalMonitorForEvents(matching: [.flagsChanged]) { event in
+            let bits = UInt64(event.modifierFlags.rawValue) & CustomShortcut.deviceModifierMask
+            let count = CustomShortcut.deviceModifierCount(bits)
+            if count >= 2 {
+                peakDeviceBits = bits
+                liveDisplay = CustomShortcut.modifierChordDisplay(bits)
+            }
+            // Modifier released after a valid combo was seen → confirm.
+            if count < CustomShortcut.deviceModifierCount(peakDeviceBits) && peakDeviceBits != 0 {
+                shortcut = CustomShortcut(kind: .modifierChord, keyCode: 0, modifiers: peakDeviceBits)
+                stopRecording()
+                return nil
+            }
+            return event
+        }
+        // Monitor key presses for modifier + key combos.
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
             let modifierMask: UInt64 = CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
                 | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
             let mods = UInt64(event.modifierFlags.rawValue) & modifierMask
-            // Require at least one modifier key.
             guard mods != 0 else { return event }
-            // Escape cancels recording.
             if event.keyCode == 53 { stopRecording(); return nil }
             shortcut = CustomShortcut(kind: .keyCombo, keyCode: event.keyCode, modifiers: mods)
             stopRecording()
@@ -397,8 +417,12 @@ struct ShortcutRecorderView: View {
 
     private func stopRecording() {
         recording = false
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = nil
+        peakDeviceBits = 0
+        liveDisplay = ""
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        if let flagsMonitor { NSEvent.removeMonitor(flagsMonitor) }
+        keyMonitor = nil
+        flagsMonitor = nil
     }
 }
 

@@ -156,17 +156,31 @@ struct CustomShortcut: Codable, Equatable {
     enum Kind: String, Codable {
         case rightModifierChord  // Original: Right ⌘ + Right ⌥
         case keyCombo            // Modifier flags + key code
+        case modifierChord       // Device-specific modifier bits only (e.g. Right ⌘ + Right ⌥)
     }
     var kind: Kind
     var keyCode: UInt16      // Only used for .keyCombo
-    var modifiers: UInt64    // CGEventFlags.rawValue for .keyCombo; ignored for .rightModifierChord
+    var modifiers: UInt64    // CGEventFlags for .keyCombo; device-specific bits for .modifierChord; ignored for .rightModifierChord
 
     static let defaultShortcut = CustomShortcut(kind: .rightModifierChord, keyCode: 0, modifiers: 0)
+
+    // Device-specific modifier bits from IOLLEvent.h
+    static let deviceLeftControl:  UInt64 = 0x0001
+    static let deviceLeftShift:    UInt64 = 0x0002
+    static let deviceRightShift:   UInt64 = 0x0004
+    static let deviceLeftCommand:  UInt64 = 0x0008
+    static let deviceRightCommand: UInt64 = 0x0010
+    static let deviceLeftOption:   UInt64 = 0x0020
+    static let deviceRightOption:  UInt64 = 0x0040
+    static let deviceRightControl: UInt64 = 0x2000
+    static let deviceModifierMask: UInt64 = 0x0001 | 0x0002 | 0x0004 | 0x0008 | 0x0010 | 0x0020 | 0x0040 | 0x2000
 
     var displayString: String {
         switch kind {
         case .rightModifierChord:
             return "Right ⌘ + Right ⌥"
+        case .modifierChord:
+            return Self.modifierChordDisplay(modifiers)
         case .keyCombo:
             var parts: [String] = []
             let flags = CGEventFlags(rawValue: modifiers)
@@ -178,6 +192,25 @@ struct CustomShortcut: Codable, Equatable {
             parts.append(keyName)
             return parts.joined(separator: "")
         }
+    }
+
+    static func modifierChordDisplay(_ bits: UInt64) -> String {
+        var parts: [String] = []
+        if bits & deviceLeftControl  != 0 { parts.append("Left ⌃") }
+        if bits & deviceRightControl != 0 { parts.append("Right ⌃") }
+        if bits & deviceLeftShift    != 0 { parts.append("Left ⇧") }
+        if bits & deviceRightShift   != 0 { parts.append("Right ⇧") }
+        if bits & deviceLeftOption   != 0 { parts.append("Left ⌥") }
+        if bits & deviceRightOption  != 0 { parts.append("Right ⌥") }
+        if bits & deviceLeftCommand  != 0 { parts.append("Left ⌘") }
+        if bits & deviceRightCommand != 0 { parts.append("Right ⌘") }
+        return parts.isEmpty ? "?" : parts.joined(separator: " + ")
+    }
+
+    static func deviceModifierCount(_ bits: UInt64) -> Int {
+        var n = 0; var b = bits & deviceModifierMask
+        while b != 0 { n += 1; b &= b - 1 }
+        return n
     }
 
     static func keyName(for keyCode: UInt16) -> String {
@@ -218,21 +251,25 @@ final class ActivationShortcut {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var chord = RightModifierChord()
+    private var modifierChordActive = false
     var shortcut = CustomShortcut.load() {
         didSet {
             shortcut.save()
             chord.reset()
+            modifierChordActive = false
         }
     }
     var action: (() -> Void)?
 
     func start() {
         guard tap == nil, AXIsProcessTrusted() else { return }
+        let flagsMask = CGEventMask(1) << CGEventType.flagsChanged.rawValue
+        let keyMask = CGEventMask(1) << CGEventType.keyDown.rawValue
         let eventMask: CGEventMask = switch shortcut.kind {
-        case .rightModifierChord:
-            CGEventMask(1) << CGEventType.flagsChanged.rawValue
+        case .rightModifierChord, .modifierChord:
+            flagsMask
         case .keyCombo:
-            (CGEventMask(1) << CGEventType.keyDown.rawValue) | (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
+            keyMask | flagsMask
         }
         guard let port = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
             options: .listenOnly, eventsOfInterest: eventMask,
@@ -241,6 +278,7 @@ final class ActivationShortcut {
                 let shortcutObj = Unmanaged<ActivationShortcut>.fromOpaque(context).takeUnretainedValue()
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
                     shortcutObj.chord.reset()
+                    shortcutObj.modifierChordActive = false
                     if let tap = shortcutObj.tap { CGEvent.tapEnable(tap: tap, enable: true) }
                     return Unmanaged.passUnretained(event)
                 }
@@ -248,6 +286,16 @@ final class ActivationShortcut {
                 case .rightModifierChord:
                     if type == .flagsChanged, shortcutObj.chord.update(flags: event.flags.rawValue) {
                         DispatchQueue.main.async { shortcutObj.action?() }
+                    }
+                case .modifierChord:
+                    if type == .flagsChanged {
+                        let current = event.flags.rawValue & CustomShortcut.deviceModifierMask
+                        let required = shortcutObj.shortcut.modifiers
+                        let matched = current == required
+                        if matched && !shortcutObj.modifierChordActive {
+                            DispatchQueue.main.async { shortcutObj.action?() }
+                        }
+                        shortcutObj.modifierChordActive = matched
                     }
                 case .keyCombo:
                     if type == .keyDown {
