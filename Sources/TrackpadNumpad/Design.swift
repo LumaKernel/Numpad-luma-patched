@@ -352,3 +352,53 @@ struct PressStyle: ButtonStyle {
     }
 }
 
+struct ShortcutRecorderView: View {
+    @Binding var shortcut: CustomShortcut
+    @State private var recording = false
+    @State private var monitor: Any?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(L("Record new shortcut"))
+                Spacer()
+                Button(recording ? L("Cancel") : L("Record…")) {
+                    if recording { stopRecording() } else { startRecording() }
+                }
+                .foregroundStyle(recording ? .orange : mint)
+            }
+            if recording {
+                Text(L("Press a key combination (modifier + key)…"))
+                    .font(.system(size: 12))
+                    .foregroundStyle(mint)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .background(mint.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(mint.opacity(0.3), lineWidth: 1))
+            }
+        }
+    }
+
+    private func startRecording() {
+        recording = true
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            let modifierMask: UInt64 = CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
+                | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
+            let mods = UInt64(event.modifierFlags.rawValue) & modifierMask
+            // Require at least one modifier key.
+            guard mods != 0 else { return event }
+            // Escape cancels recording.
+            if event.keyCode == 53 { stopRecording(); return nil }
+            shortcut = CustomShortcut(kind: .keyCombo, keyCode: event.keyCode, modifiers: mods)
+            stopRecording()
+            return nil
+        }
+    }
+
+    private func stopRecording() {
+        recording = false
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = nil
+    }
+}
+

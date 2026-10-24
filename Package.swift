@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "TrackpadNumpad",
+    name: "NumpadLuma",
     defaultLocalization: "en",
     platforms: [.macOS(.v13)],
-    products: [.executable(name: "TrackpadNumpad", targets: ["TrackpadNumpad"])],
+    products: [.executable(name: "NumpadLuma", targets: ["TrackpadNumpad"])],
     targets: [
         .target(name: "CTrackpad", linkerSettings: [.linkedFramework("CoreFoundation"), .linkedFramework("IOKit")]),
         .target(name: "TrackpadCore", resources: [.process("Resources")]),

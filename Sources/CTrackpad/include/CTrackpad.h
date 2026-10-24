@@ -15,4 +15,6 @@ bool TPHapticClick(void);
 bool TPHapticCenter(void);
 void TPHapticShutdown(void);
 const char *TPError(void);
+// Returns the number of trackpad devices currently known.
+int32_t TPDeviceCount(void);
 #endif

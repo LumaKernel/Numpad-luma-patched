@@ -150,24 +150,116 @@ final class InputService {
     deinit { stop() }
 }
 
+// MARK: - Custom Shortcut
+
+struct CustomShortcut: Codable, Equatable {
+    enum Kind: String, Codable {
+        case rightModifierChord  // Original: Right ⌘ + Right ⌥
+        case keyCombo            // Modifier flags + key code
+    }
+    var kind: Kind
+    var keyCode: UInt16      // Only used for .keyCombo
+    var modifiers: UInt64    // CGEventFlags.rawValue for .keyCombo; ignored for .rightModifierChord
+
+    static let defaultShortcut = CustomShortcut(kind: .rightModifierChord, keyCode: 0, modifiers: 0)
+
+    var displayString: String {
+        switch kind {
+        case .rightModifierChord:
+            return "Right ⌘ + Right ⌥"
+        case .keyCombo:
+            var parts: [String] = []
+            let flags = CGEventFlags(rawValue: modifiers)
+            if flags.contains(.maskControl) { parts.append("⌃") }
+            if flags.contains(.maskAlternate) { parts.append("⌥") }
+            if flags.contains(.maskShift) { parts.append("⇧") }
+            if flags.contains(.maskCommand) { parts.append("⌘") }
+            let keyName = Self.keyName(for: keyCode)
+            parts.append(keyName)
+            return parts.joined(separator: "")
+        }
+    }
+
+    static func keyName(for keyCode: UInt16) -> String {
+        // Use Carbon's TISCopyCurrentKeyboardInputSource for layout-aware names.
+        if let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+           let layoutData = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) {
+            let layout = unsafeBitCast(layoutData, to: CFData.self)
+            let layoutPointer = CFDataGetBytePtr(layout)!
+            var deadKeyState: UInt32 = 0
+            var length: Int = 0
+            var chars = [UniChar](repeating: 0, count: 4)
+            let status = UCKeyTranslate(
+                layoutPointer.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { $0 },
+                keyCode, UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                UInt32(kUCKeyTranslateNoDeadKeysBit), &deadKeyState, 4, &length, &chars)
+            if status == noErr, length > 0 {
+                return String(utf16CodeUnits: chars, count: length).uppercased()
+            }
+        }
+        return "Key\(keyCode)"
+    }
+
+    static func load() -> CustomShortcut {
+        guard let data = UserDefaults.standard.data(forKey: "activationShortcut"),
+              let shortcut = try? JSONDecoder().decode(CustomShortcut.self, from: data) else {
+            return .defaultShortcut
+        }
+        return shortcut
+    }
+
+    func save() {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        UserDefaults.standard.set(data, forKey: "activationShortcut")
+    }
+}
+
 final class ActivationShortcut {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var chord = RightModifierChord()
+    var shortcut = CustomShortcut.load() {
+        didSet {
+            shortcut.save()
+            chord.reset()
+        }
+    }
     var action: (() -> Void)?
 
     func start() {
         guard tap == nil, AXIsProcessTrusted() else { return }
+        let eventMask: CGEventMask = switch shortcut.kind {
+        case .rightModifierChord:
+            CGEventMask(1) << CGEventType.flagsChanged.rawValue
+        case .keyCombo:
+            (CGEventMask(1) << CGEventType.keyDown.rawValue) | (CGEventMask(1) << CGEventType.flagsChanged.rawValue)
+        }
         guard let port = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
-            options: .listenOnly, eventsOfInterest: CGEventMask(1) << CGEventType.flagsChanged.rawValue,
+            options: .listenOnly, eventsOfInterest: eventMask,
             callback: { _, type, event, context in
                 guard let context else { return Unmanaged.passUnretained(event) }
-                let shortcut = Unmanaged<ActivationShortcut>.fromOpaque(context).takeUnretainedValue()
+                let shortcutObj = Unmanaged<ActivationShortcut>.fromOpaque(context).takeUnretainedValue()
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    shortcut.chord.reset()
-                    if let tap = shortcut.tap { CGEvent.tapEnable(tap: tap, enable: true) }
-                } else if type == .flagsChanged, shortcut.chord.update(flags: event.flags.rawValue) {
-                    DispatchQueue.main.async { shortcut.action?() }
+                    shortcutObj.chord.reset()
+                    if let tap = shortcutObj.tap { CGEvent.tapEnable(tap: tap, enable: true) }
+                    return Unmanaged.passUnretained(event)
+                }
+                switch shortcutObj.shortcut.kind {
+                case .rightModifierChord:
+                    if type == .flagsChanged, shortcutObj.chord.update(flags: event.flags.rawValue) {
+                        DispatchQueue.main.async { shortcutObj.action?() }
+                    }
+                case .keyCombo:
+                    if type == .keyDown {
+                        let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+                        let modifierMask: UInt64 = CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
+                            | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
+                        let currentMods = event.flags.rawValue & modifierMask
+                        let expectedMods = shortcutObj.shortcut.modifiers & modifierMask
+                        if keyCode == shortcutObj.shortcut.keyCode && currentMods == expectedMods {
+                            DispatchQueue.main.async { shortcutObj.action?() }
+                        }
+                    }
                 }
                 return Unmanaged.passUnretained(event)
             }, userInfo: Unmanaged.passUnretained(self).toOpaque()) else { return }
@@ -184,6 +276,11 @@ final class ActivationShortcut {
         if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
         tap = nil; source = nil; chord.reset()
     }
+
+    func restart() {
+        stop()
+        start()
+    }
+
     deinit { stop() }
 }
-

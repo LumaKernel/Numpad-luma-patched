@@ -16,9 +16,9 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         didSet {
             guard oldValue != language else { return }
             UserDefaults.standard.set(language.rawValue, forKey: "appLanguage")
-            settingsWindow?.title = L("Numpad Settings")
-            onboardingWindow?.title = L("Welcome to Numpad")
-            panel?.title = L("Numpad Overlay")
+            settingsWindow?.title = L("NumpadLuma Settings")
+            onboardingWindow?.title = L("Welcome to NumpadLuma")
+            panel?.title = L("NumpadLuma Overlay")
             if item != nil { updateMenu() }
         }
     }
@@ -91,6 +91,14 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             if enabled { updateGuide() }
         }
     }
+    var shortcutDisplay: String { optionShortcut.shortcut.displayString }
+    var currentShortcut: CustomShortcut { optionShortcut.shortcut }
+    func setShortcut(_ shortcut: CustomShortcut) {
+        optionShortcut.shortcut = shortcut
+        optionShortcut.restart()
+        updateMenu()
+    }
+
     private var item: NSStatusItem!
     private var panel: NSPanel?
     private var snapPanel: OverlayPanel?
@@ -195,7 +203,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         guard deviceReady else { messageText = LocalizedMessage(String(cString: TPError())); showSettings(); return }
         activationInput = FocusedInput.capture(applicationPID: NSApp.isActive ? previousApp?.processIdentifier : nil)
         guard input.start() else {
-            messageText = LocalizedMessage("Could not start input monitoring. Check Accessibility access and restart Numpad.")
+            messageText = LocalizedMessage("Could not start input monitoring. Check Accessibility access and restart NumpadLuma.")
             showSettings(); return
         }
         generation += 1
@@ -389,7 +397,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if settingsWindow == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 700),
                 styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-            window.title = L("Numpad Settings")
+            window.title = L("NumpadLuma Settings")
             window.contentView = NSHostingView(rootView: SettingsView(model: self))
             window.isReleasedWhenClosed = false
             window.delegate = self
@@ -408,7 +416,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             let model = OnboardingModel(app: self)
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 580),
                 styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-            window.title = L("Welcome to Numpad")
+            window.title = L("Welcome to NumpadLuma")
             window.titleVisibility = .hidden
             window.titlebarAppearsTransparent = true
             window.isMovableByWindowBackground = true
@@ -464,7 +472,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         if panel == nil {
             let created = OverlayPanel(contentRect: NSRect(x: 0, y: 0, width: 540, height: 360),
                 styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-            created.title = L("Numpad Overlay")
+            created.title = L("NumpadLuma Overlay")
             created.contentView = NSHostingView(rootView: GuideView(model: self))
             created.isOpaque = false; created.backgroundColor = .clear
             created.hasShadow = true
@@ -590,11 +598,12 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     }
 
     private func updateMenu() {
-        item.button?.image = NSImage(systemSymbolName: enabled ? "rectangle.grid.3x3.fill" : "rectangle.grid.3x3", accessibilityDescription: "Numpad")
+        item.button?.image = NSImage(systemSymbolName: enabled ? "rectangle.grid.3x3.fill" : "rectangle.grid.3x3", accessibilityDescription: "NumpadLuma")
         item.button?.contentTintColor = enabled ? .systemMint : nil
-        item.button?.toolTip = L("Numpad · Right ⌘ + Right ⌥ to toggle")
+        let shortcutName = optionShortcut.shortcut.displayString
+        item.button?.toolTip = "NumpadLuma · \(shortcutName) to toggle"
         let menu = NSMenu()
-        menu.addItem(withTitle: enabled ? L("Turn Keypad Off  Right ⌘⌥ / Esc") : L("Turn Keypad On  Right ⌘⌥"), action: #selector(toggle), keyEquivalent: "")
+        menu.addItem(withTitle: enabled ? "Turn Keypad Off  \(shortcutName) / Esc" : "Turn Keypad On  \(shortcutName)", action: #selector(toggle), keyEquivalent: "")
         menu.addItem(withTitle: L("Settings…"), action: #selector(showSettings), keyEquivalent: ",")
         menu.addItem(withTitle: L("Preview Keypad"), action: #selector(previewGuide), keyEquivalent: "")
         menu.addItem(withTitle: L("Getting Started…"), action: #selector(showOnboarding), keyEquivalent: "")
@@ -602,7 +611,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             menu.addItem(withTitle: L("Allow Accessibility Access…"), action: #selector(requestPermission), keyEquivalent: "")
         }
         menu.addItem(.separator())
-        menu.addItem(withTitle: L("Quit Numpad"), action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(withTitle: L("Quit NumpadLuma"), action: #selector(quit), keyEquivalent: "q")
         menu.items.forEach { $0.target = self }
         item.menu = menu
     }

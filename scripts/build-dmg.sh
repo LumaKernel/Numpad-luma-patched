@@ -16,22 +16,22 @@ fi
 export UNIVERSAL=1
 bash scripts/build-app.sh
 version="$(cat VERSION)"
-bundle="$PWD/dist/Numpad.app"
-image="$PWD/dist/Numpad-$version-universal.dmg"
-staging="$(mktemp -d "${TMPDIR:-/tmp}/numpad-dmg.XXXXXX")"
+bundle="$PWD/dist/NumpadLuma.app"
+image="$PWD/dist/NumpadLuma-$version-universal.dmg"
+staging="$(mktemp -d "${TMPDIR:-/tmp}/numpadluma-dmg.XXXXXX")"
 trap 'rm -rf "$staging"' EXIT
 
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
-    ditto -c -k --keepParent "$bundle" "$staging/Numpad.zip"
-    xcrun notarytool submit "$staging/Numpad.zip" --keychain-profile "$NOTARY_PROFILE" --wait
+    ditto -c -k --keepParent "$bundle" "$staging/NumpadLuma.zip"
+    xcrun notarytool submit "$staging/NumpadLuma.zip" --keychain-profile "$NOTARY_PROFILE" --wait
     xcrun stapler staple "$bundle"
     xcrun stapler validate "$bundle"
 fi
 
 mkdir "$staging/volume"
-ditto "$bundle" "$staging/volume/Numpad.app"
+ditto "$bundle" "$staging/volume/NumpadLuma.app"
 ln -s /Applications "$staging/volume/Applications"
-hdiutil create -volname Numpad -srcfolder "$staging/volume" -format UDZO -ov "$image"
+hdiutil create -volname NumpadLuma -srcfolder "$staging/volume" -format UDZO -ov "$image"
 
 # Some macOS versions leave the image creation device attached. Release only
 # devices belonging to this output image before signing or notarizing it.
@@ -56,8 +56,8 @@ fi
 if [[ -n "${NOTARY_PROFILE:-}" ]]; then
     # Apple processes nested containers and issues a ticket for the signed DMG.
     # Submitting a ZIP also avoids local DMG preflight stalls in notarytool.
-    ditto -c -k --keepParent "$image" "$staging/Numpad-dmg.zip"
-    xcrun notarytool submit "$staging/Numpad-dmg.zip" --keychain-profile "$NOTARY_PROFILE" --wait
+    ditto -c -k --keepParent "$image" "$staging/NumpadLuma-dmg.zip"
+    xcrun notarytool submit "$staging/NumpadLuma-dmg.zip" --keychain-profile "$NOTARY_PROFILE" --wait
     xcrun stapler staple "$image"
     xcrun stapler validate "$image"
     spctl --assess --type execute --verbose=2 "$bundle"
@@ -66,5 +66,5 @@ else
     echo "Local test build: not notarized. Do not publish as a notarized release." >&2
 fi
 
-(cd dist && shasum -a 256 "Numpad-$version-universal.dmg" > "Numpad-$version-SHA256SUMS.txt")
+(cd dist && shasum -a 256 "NumpadLuma-$version-universal.dmg" > "NumpadLuma-$version-SHA256SUMS.txt")
 printf '\nDMG: %s\n' "$image"

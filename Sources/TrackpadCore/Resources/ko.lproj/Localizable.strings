@@ -10,8 +10,8 @@
 "Changes are saved automatically. Opening Settings turns off the keypad." = "설정을 변경하면 자동 저장됩니다. 설정창을 열면 숫자판이 해제됩니다.";
 "Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field." = "오버레이를 눌러 드래그하면 위치가 저장됩니다. 활성화할 때 입력창을 가리면 화면 안의 빈자리로 이동합니다.";
 "Could not load the MultitouchSupport framework." = "MultitouchSupport 프레임워크를 불러올 수 없습니다.";
-"Could not start input monitoring. Check Accessibility access and restart Numpad." = "입력 감시를 시작하지 못했습니다. 손쉬운 사용 권한 확인 후 앱을 다시 실행하세요.";
-"Could not start receiving trackpad touches. Check the connection and restart Numpad." = "트랙패드 터치 수신을 시작하지 못했습니다. 연결을 확인하고 앱을 다시 실행하세요.";
+"Could not start input monitoring. Check Accessibility access and restart NumpadLuma." = "입력 감시를 시작하지 못했습니다. 손쉬운 사용 권한 확인 후 앱을 다시 실행하세요.";
+"Could not start receiving trackpad touches. Check the connection and restart NumpadLuma." = "트랙패드 터치 수신을 시작하지 못했습니다. 연결을 확인하고 앱을 다시 실행하세요.";
 "Defaults to On Touch. Drag with three or four fingers to move, rotate, and scale the layout live. macOS drag, zoom, and desktop-switching gestures are blocked during calibration." = "기본은 닿을 때입니다. 세 손가락 또는 네 손가락을 댄 채 드래그하면 배치가 이동·회전·크기에 실시간으로 따라옵니다. 보정 중에는 macOS 드래그·확대/축소·데스크탑 전환 제스처를 차단합니다.";
 "Enable Four-Finger Calibration" = "4손가락 보정 추가";
 "Enable Haptics" = "햅틱 사용";
@@ -30,10 +30,10 @@
 "Move your fingers a little farther apart." = "손가락 사이를 조금 더 벌려 주세요.";
 "No calibration yet." = "아직 보정하지 않았습니다.";
 "No trackpad found. Connect a trackpad and try again." = "트랙패드를 찾을 수 없습니다. 트랙패드를 연결한 뒤 다시 시도하세요.";
-"Numpad Overlay" = "Numpad 오버레이";
-"Numpad Settings" = "Numpad 설정";
-"Numpad controls pointer input and sends numeric keypad events to the focused app while keypad mode is active." = "숫자판 모드에서 마우스 입력을 제어하고 선택한 앱에 숫자 키 입력을 전달합니다.";
-"Numpad · Right ⌘ + Right ⌥ to toggle" = "Numpad · 오른쪽 ⌘ + 오른쪽 ⌥로 전환";
+"NumpadLuma Overlay" = "NumpadLuma 오버레이";
+"NumpadLuma Settings" = "NumpadLuma 설정";
+"NumpadLuma controls pointer input and sends numeric keypad events to the focused app while keypad mode is active." = "숫자판 모드에서 마우스 입력을 제어하고 선택한 앱에 숫자 키 입력을 전달합니다.";
+"NumpadLuma · Right ⌘ + Right ⌥ to toggle" = "NumpadLuma · 오른쪽 ⌘ + 오른쪽 ⌥로 전환";
 "On Release" = "뗄 때";
 "On Touch" = "닿을 때";
 "On touch down" = "손가락을 댈 때";
@@ -44,7 +44,7 @@
 "Press Esc to exit" = "Esc로 해제";
 "Preview Keypad" = "키 배치 미리 보기";
 "Preview Overlay" = "오버레이 미리 보기";
-"Quit Numpad" = "종료";
+"Quit NumpadLuma" = "종료";
 "Reset Calibration" = "보정 초기화";
 "Reset to Bottom Center" = "하단 중앙으로 초기화";
 "Right" = "오른쪽";
@@ -73,7 +73,7 @@
 "Choose a side for ⌫ ÷ × − + ↵. You can change it in Settings anytime." = "⌫ ÷ × − + ↵ 키를 둘 위치를 고르세요. 설정에서 언제든 바꿀 수 있어요.";
 "Click Open System Settings" = "시스템 설정 열기를 누르세요";
 "Continue" = "계속";
-"Enable Numpad in the list" = "목록에서 Numpad를 켜세요";
+"Enable NumpadLuma in the list" = "목록에서 NumpadLuma를 켜세요";
 "Get Started" = "시작하기";
 "Getting Started…" = "시작 가이드…";
 "Got it! You can now turn on the keypad in any app." = "완벽해요! 이제 어느 앱에서든 숫자판을 켤 수 있어요.";
@@ -82,8 +82,8 @@
 "Menu bar" = "메뉴 막대";
 "No trackpad found" = "트랙패드를 찾지 못했어요";
 "Numbers at your fingertips" = "이제 숫자는 손끝에서";
-"Numpad is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers." = "Numpad는 메뉴 막대에서 기다립니다. 숫자를 입력할 칸을 선택하고 단축키를 누르세요.";
-"Numpad needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input." = "숫자판이 켜진 동안 포인터를 잠시 멈추고 입력한 숫자를 지금 쓰는 앱에 전달하려면 필요해요. 입력 내용은 읽거나 저장하지 않습니다.";
+"NumpadLuma is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers." = "NumpadLuma는 메뉴 막대에서 기다립니다. 숫자를 입력할 칸을 선택하고 단축키를 누르세요.";
+"NumpadLuma needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input." = "숫자판이 켜진 동안 포인터를 잠시 멈추고 입력한 숫자를 지금 쓰는 앱에 전달하려면 필요해요. 입력 내용은 읽거나 저장하지 않습니다.";
 "One shortcut, on or off" = "언제든 한 번에 켜고 끄기";
 "Open System Settings" = "시스템 설정 열기";
 "PERMISSION" = "권한";
@@ -95,7 +95,7 @@
 "SHORTCUT" = "단축키";
 "Settings and preview" = "설정 · 미리 보기";
 "Skip" = "건너뛰기";
-"Start Using Numpad" = "Numpad 사용하기";
+"Start Using NumpadLuma" = "NumpadLuma 사용하기";
 "Tap briefly with one finger to enter %@. Practice stays in this guide and never types into another app." = "트랙패드를 한 손가락으로 짧게 탭해서 %@을 입력하세요. 연습 중에는 실제 앱에 입력되지 않아요.";
 "Tap ⌫ to delete a digit" = "⌫를 탭하면 지워집니다";
 "Those are the left keys. Try the right ⌘ and ⌥ keys." = "그건 왼쪽 키예요. 오른쪽 ⌘ ⌥를 눌러 주세요.";
@@ -104,7 +104,7 @@
 "Turn off instantly" = "바로 해제";
 "Use the same shortcut or press Esc to turn the keypad off." = "끌 때는 같은 단축키 또는 Esc를 누르면 됩니다.";
 "Waiting for access…" = "허용을 기다리는 중…";
-"Welcome to Numpad" = "Numpad 시작하기";
+"Welcome to NumpadLuma" = "NumpadLuma 시작하기";
 "Which side feels right?" = "조작키는 어느 쪽에 둘까요?";
 "You have got it!" = "손에 익었네요!";
 "You will return here once access is granted" = "허용되면 이 창으로 자동으로 돌아옵니다";

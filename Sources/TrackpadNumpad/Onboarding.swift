@@ -248,7 +248,7 @@ struct OnboardingView: View {
         case .welcome:
             PrimaryButton(title: L("Get Started"), systemImage: "arrow.right") { model.next() }
         case .done:
-            PrimaryButton(title: L("Start Using Numpad"), systemImage: "checkmark") { model.finish() }
+            PrimaryButton(title: L("Start Using NumpadLuma"), systemImage: "checkmark") { model.finish() }
         default:
             HStack {
                 QuietButton(title: L("Back")) { model.back() }
@@ -388,12 +388,12 @@ private struct PermissionStep: View {
                 .frame(width: 300)
             VStack(alignment: .leading, spacing: 22) {
                 StepTitle(eyebrow: L("PERMISSION"), title: L("Allow Accessibility access"),
-                          subtitle: L("Numpad needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input."),
+                          subtitle: L("NumpadLuma needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input."),
                           alignment: .leading)
                 StatusPill(granted: trusted)
                 VStack(alignment: .leading, spacing: 10) {
                     Instruction(number: 1, text: L("Click Open System Settings"))
-                    Instruction(number: 2, text: L("Enable Numpad in the list"))
+                    Instruction(number: 2, text: L("Enable NumpadLuma in the list"))
                     Instruction(number: 3, text: L("You will return here once access is granted"))
                 }
             }
@@ -438,7 +438,7 @@ private struct SettingsIllustration: View {
                 HStack(spacing: 10) {
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable().frame(width: 26, height: 26)
-                    Text("Numpad").font(.system(size: 12, weight: .medium))
+                    Text("NumpadLuma").font(.system(size: 12, weight: .medium))
                     Spacer()
                     Capsule().fill(on ? mint : Color.white.opacity(0.18))
                         .frame(width: 34, height: 20)
@@ -627,7 +627,7 @@ private struct DoneStep: View {
             }
             .frame(height: 110)
             StepTitle(eyebrow: L("ALL SET"), title: L("Numbers at your fingertips"),
-                      subtitle: L("Numpad is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers."))
+                      subtitle: L("NumpadLuma is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers."))
             HStack(spacing: 14) {
                 SummaryCard(symbol: "command", title: L("Right ⌘ + ⌥"), caption: L("Toggle on or off"))
                 SummaryCard(symbol: "escape", title: "Esc", caption: L("Turn off instantly"))

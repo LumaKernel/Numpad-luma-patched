@@ -10,8 +10,8 @@
 "Changes are saved automatically. Opening Settings turns off the keypad." = "Changes are saved automatically. Opening Settings turns off the keypad.";
 "Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field." = "Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field.";
 "Could not load the MultitouchSupport framework." = "Could not load the MultitouchSupport framework.";
-"Could not start input monitoring. Check Accessibility access and restart Numpad." = "Could not start input monitoring. Check Accessibility access and restart Numpad.";
-"Could not start receiving trackpad touches. Check the connection and restart Numpad." = "Could not start receiving trackpad touches. Check the connection and restart Numpad.";
+"Could not start input monitoring. Check Accessibility access and restart NumpadLuma." = "Could not start input monitoring. Check Accessibility access and restart NumpadLuma.";
+"Could not start receiving trackpad touches. Check the connection and restart NumpadLuma." = "Could not start receiving trackpad touches. Check the connection and restart NumpadLuma.";
 "Defaults to On Touch. Drag with three or four fingers to move, rotate, and scale the layout live. macOS drag, zoom, and desktop-switching gestures are blocked during calibration." = "Defaults to On Touch. Drag with three or four fingers to move, rotate, and scale the layout live. macOS drag, zoom, and desktop-switching gestures are blocked during calibration.";
 "Enable Four-Finger Calibration" = "Enable Four-Finger Calibration";
 "Enable Haptics" = "Enable Haptics";
@@ -30,10 +30,10 @@
 "Move your fingers a little farther apart." = "Move your fingers a little farther apart.";
 "No calibration yet." = "No calibration yet.";
 "No trackpad found. Connect a trackpad and try again." = "No trackpad found. Connect a trackpad and try again.";
-"Numpad Overlay" = "Numpad Overlay";
-"Numpad Settings" = "Numpad Settings";
-"Numpad controls pointer input and sends numeric keypad events to the focused app while keypad mode is active." = "Numpad controls pointer input and sends numeric keypad events to the focused app while keypad mode is active.";
-"Numpad · Right ⌘ + Right ⌥ to toggle" = "Numpad · Right ⌘ + Right ⌥ to toggle";
+"NumpadLuma Overlay" = "NumpadLuma Overlay";
+"NumpadLuma Settings" = "NumpadLuma Settings";
+"NumpadLuma controls pointer input and sends numeric keypad events to the focused app while keypad mode is active." = "NumpadLuma controls pointer input and sends numeric keypad events to the focused app while keypad mode is active.";
+"NumpadLuma · Right ⌘ + Right ⌥ to toggle" = "NumpadLuma · Right ⌘ + Right ⌥ to toggle";
 "On Release" = "On Release";
 "On Touch" = "On Touch";
 "On touch down" = "On touch down";
@@ -44,7 +44,7 @@
 "Press Esc to exit" = "Press Esc to exit";
 "Preview Keypad" = "Preview Keypad";
 "Preview Overlay" = "Preview Overlay";
-"Quit Numpad" = "Quit Numpad";
+"Quit NumpadLuma" = "Quit NumpadLuma";
 "Reset Calibration" = "Reset Calibration";
 "Reset to Bottom Center" = "Reset to Bottom Center";
 "Right" = "Right";
@@ -73,7 +73,7 @@
 "Choose a side for ⌫ ÷ × − + ↵. You can change it in Settings anytime." = "Choose a side for ⌫ ÷ × − + ↵. You can change it in Settings anytime.";
 "Click Open System Settings" = "Click Open System Settings";
 "Continue" = "Continue";
-"Enable Numpad in the list" = "Enable Numpad in the list";
+"Enable NumpadLuma in the list" = "Enable NumpadLuma in the list";
 "Get Started" = "Get Started";
 "Getting Started…" = "Getting Started…";
 "Got it! You can now turn on the keypad in any app." = "Got it! You can now turn on the keypad in any app.";
@@ -82,8 +82,8 @@
 "Menu bar" = "Menu bar";
 "No trackpad found" = "No trackpad found";
 "Numbers at your fingertips" = "Numbers at your fingertips";
-"Numpad is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers." = "Numpad is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers.";
-"Numpad needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input." = "Numpad needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input.";
+"NumpadLuma is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers." = "NumpadLuma is ready in your menu bar. Focus an input field and press the shortcut to start typing numbers.";
+"NumpadLuma needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input." = "NumpadLuma needs permission to hold the pointer still and send numbers to the app you are using. It does not read or save your input.";
 "One shortcut, on or off" = "One shortcut, on or off";
 "Open System Settings" = "Open System Settings";
 "PERMISSION" = "PERMISSION";
@@ -95,7 +95,7 @@
 "SHORTCUT" = "SHORTCUT";
 "Settings and preview" = "Settings and preview";
 "Skip" = "Skip";
-"Start Using Numpad" = "Start Using Numpad";
+"Start Using NumpadLuma" = "Start Using NumpadLuma";
 "Tap briefly with one finger to enter %@. Practice stays in this guide and never types into another app." = "Tap briefly with one finger to enter %@. Practice stays in this guide and never types into another app.";
 "Tap ⌫ to delete a digit" = "Tap ⌫ to delete a digit";
 "Those are the left keys. Try the right ⌘ and ⌥ keys." = "Those are the left keys. Try the right ⌘ and ⌥ keys.";
@@ -104,7 +104,7 @@
 "Turn off instantly" = "Turn off instantly";
 "Use the same shortcut or press Esc to turn the keypad off." = "Use the same shortcut or press Esc to turn the keypad off.";
 "Waiting for access…" = "Waiting for access…";
-"Welcome to Numpad" = "Welcome to Numpad";
+"Welcome to NumpadLuma" = "Welcome to NumpadLuma";
 "Which side feels right?" = "Which side feels right?";
 "You have got it!" = "You have got it!";
 "You will return here once access is granted" = "You will return here once access is granted";

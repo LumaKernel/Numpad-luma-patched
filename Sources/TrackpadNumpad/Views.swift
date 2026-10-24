@@ -136,12 +136,13 @@ struct SettingsView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Numpad").font(.system(size: 23, weight: .semibold))
+                Text("NumpadLuma").font(.system(size: 23, weight: .semibold))
                 Text(L("Right ⌘ + Right ⌥ to toggle · Esc to exit"))
                     .font(.system(size: 11)).foregroundStyle(.secondary)
             }
             TabView {
                 generalSettings.tabItem { Text(L("General")) }
+                shortcutSettings.tabItem { Text(L("Shortcut")) }
                 hapticSettings.tabItem { Text(L("Haptics")) }
                 experimentalSettings.tabItem { Text(L("Experimental")) }
             }
@@ -194,6 +195,35 @@ struct SettingsView: View {
             Text(L("Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }.padding(20)
+    }
+
+    private var shortcutSettings: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L("Activation Shortcut")).font(.headline)
+            Text(L("Choose a keyboard shortcut to toggle the keypad on and off."))
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            HStack {
+                Text(L("Current shortcut"))
+                Spacer()
+                Text(model.shortcutDisplay)
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 8))
+                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.white.opacity(0.1), lineWidth: 1))
+            }
+            Divider()
+            ShortcutRecorderView(shortcut: Binding(
+                get: { model.currentShortcut },
+                set: { model.setShortcut($0) }
+            ))
+            Divider()
+            Button(L("Reset to Default (Right ⌘ + Right ⌥)")) {
+                model.setShortcut(.defaultShortcut)
+            }
             Spacer(minLength: 0)
         }.padding(20)
     }

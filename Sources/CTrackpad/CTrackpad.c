@@ -24,7 +24,14 @@ _Static_assert(sizeof(Contact) == 96, "Unexpected contact ABI");
 _Static_assert(offsetof(Contact, normalized) == 32, "Unexpected position offset");
 
 typedef int (*FrameCallback)(void *, Contact *, int, double, int);
-static void *library, *device;
+static void *library;
+
+// Multi-device support: store an array of device pointers.
+#define MAX_DEVICES 8
+static void *devices[MAX_DEVICES];
+static int32_t deviceCount;
+
+static CFArrayRef (*createList)(void);
 static void *(*createDefault)(void);
 static void (*registerCallback)(void *, FrameCallback);
 static void (*unregisterCallback)(void *, FrameCallback);
@@ -54,22 +61,52 @@ static int receiveFrame(void *sender, Contact *contacts, int count, double times
     return 0;
 }
 
-bool TPInitialize(void) {
-    if (device) return true;
-    if (!library) library = dlopen("/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport", RTLD_NOW | RTLD_LOCAL);
+static bool loadLibrary(void) {
+    if (library) return true;
+    library = dlopen("/System/Library/PrivateFrameworks/MultitouchSupport.framework/MultitouchSupport", RTLD_NOW | RTLD_LOCAL);
     if (!library) { errorMessage = "Could not load the MultitouchSupport framework."; return false; }
+    createList = dlsym(library, "MTDeviceCreateList");
     createDefault = dlsym(library, "MTDeviceCreateDefault");
     registerCallback = dlsym(library, "MTRegisterContactFrameCallback");
     unregisterCallback = dlsym(library, "MTUnregisterContactFrameCallback");
     startDevice = dlsym(library, "MTDeviceStart");
     stopDevice = dlsym(library, "MTDeviceStop");
     isRunning = dlsym(library, "MTDeviceIsRunning");
-    if (!createDefault || !registerCallback || !unregisterCallback || !startDevice || !stopDevice || !isRunning) {
+    if (!registerCallback || !unregisterCallback || !startDevice || !stopDevice || !isRunning) {
         errorMessage = "The required trackpad API is unavailable on this version of macOS."; return false;
     }
-    device = createDefault();
-    if (!device) { errorMessage = "No trackpad found. Connect a trackpad and try again."; return false; }
-    // The default device is retained for this process's lifetime.
+    return true;
+}
+
+bool TPInitialize(void) {
+    if (deviceCount > 0) return true;
+    if (!loadLibrary()) return false;
+
+    // Try MTDeviceCreateList first (enumerates all trackpads including Bluetooth).
+    if (createList) {
+        CFArrayRef list = createList();
+        if (list) {
+            CFIndex count = CFArrayGetCount(list);
+            for (CFIndex i = 0; i < count && deviceCount < MAX_DEVICES; i++) {
+                void *dev = (void *)CFArrayGetValueAtIndex(list, i);
+                if (dev) devices[deviceCount++] = dev;
+            }
+            // CFArray from MTDeviceCreateList is owned by us, but the devices
+            // inside are retained by the framework. Release the container only.
+            CFRelease(list);
+        }
+    }
+
+    // Fallback to MTDeviceCreateDefault if MTDeviceCreateList is unavailable or returned nothing.
+    if (deviceCount == 0 && createDefault) {
+        void *dev = createDefault();
+        if (dev) devices[deviceCount++] = dev;
+    }
+
+    if (deviceCount == 0) {
+        errorMessage = "No trackpad found. Connect a trackpad and try again.";
+        return false;
+    }
     return true;
 }
 
@@ -79,13 +116,28 @@ bool TPStart(TPCallback callback, void *context) {
     pthread_mutex_lock(&lock);
     receiver = callback; receiverContext = context;
     pthread_mutex_unlock(&lock);
-    registerCallback(device, receiveFrame);
-    startDevice(device, 0);
-    running = true;
-    if (!isRunning(device)) {
-        errorMessage = "Could not start receiving trackpad touches. Check the connection and restart Numpad.";
-        TPStop(); return false;
+
+    int32_t started = 0;
+    for (int32_t i = 0; i < deviceCount; i++) {
+        registerCallback(devices[i], receiveFrame);
+        startDevice(devices[i], 0);
+        if (isRunning(devices[i])) {
+            started++;
+        } else {
+            // Clean up this device but continue with others.
+            unregisterCallback(devices[i], receiveFrame);
+            stopDevice(devices[i]);
+        }
     }
+
+    if (started == 0) {
+        errorMessage = "Could not start receiving trackpad touches. Check the connection and restart NumpadLuma.";
+        pthread_mutex_lock(&lock);
+        receiver = NULL; receiverContext = NULL;
+        pthread_mutex_unlock(&lock);
+        return false;
+    }
+    running = true;
     return true;
 }
 
@@ -94,22 +146,28 @@ void TPStop(void) {
     pthread_mutex_lock(&lock);
     receiver = NULL; receiverContext = NULL;
     pthread_mutex_unlock(&lock);
-    stopDevice(device);
-    unregisterCallback(device, receiveFrame);
+    for (int32_t i = 0; i < deviceCount; i++) {
+        stopDevice(devices[i]);
+        unregisterCallback(devices[i], receiveFrame);
+    }
     running = false;
 }
 const char *TPError(void) { return errorMessage; }
+int32_t TPDeviceCount(void) { return deviceCount; }
 
 // AppKit may omit feedback after lift-off. Drive the Force Touch actuator
 // directly so release-confirmed taps still receive exactly one short pulse.
-static CFTypeRef actuator;
+// Try all devices that support actuation and use the first one that works.
+#define MAX_ACTUATORS 8
+static CFTypeRef actuators[MAX_ACTUATORS];
+static int32_t actuatorCount;
 static CFTypeRef (*createActuator)(uint64_t);
 static IOReturn (*openActuator)(CFTypeRef);
 static IOReturn (*closeActuator)(CFTypeRef);
 static IOReturn (*actuate)(CFTypeRef, int32_t, uint32_t, float, float);
 
-static bool initializeActuator(void) {
-    if (actuator) return true;
+static bool initializeActuators(void) {
+    if (actuatorCount > 0) return true;
     if (!TPInitialize()) return false;
     createActuator = dlsym(library, "MTActuatorCreateFromDeviceID");
     openActuator = dlsym(library, "MTActuatorOpen");
@@ -126,35 +184,38 @@ static bool initializeActuator(void) {
         if (supported == kCFBooleanTrue && identifier && CFGetTypeID(identifier) == CFNumberGetTypeID()) {
             int64_t deviceID = 0;
             if (CFNumberGetValue((CFNumberRef)identifier, kCFNumberSInt64Type, &deviceID)) {
-                actuator = createActuator((uint64_t)deviceID);
+                CFTypeRef act = createActuator((uint64_t)deviceID);
+                if (act && actuatorCount < MAX_ACTUATORS) {
+                    actuators[actuatorCount++] = act;
+                }
             }
         }
         if (supported) CFRelease(supported);
         if (identifier) CFRelease(identifier);
         IOObjectRelease(service);
-        if (actuator) break;
     }
     IOObjectRelease(iterator);
-    return actuator != NULL;
+    return actuatorCount > 0;
 }
 
 static bool performHaptic(int32_t pattern) {
-    if (!initializeActuator()) return false;
-    if (openActuator(actuator) != kIOReturnSuccess) {
-        TPHapticShutdown(); return false;
+    if (!initializeActuators()) return false;
+    bool anySuccess = false;
+    for (int32_t i = 0; i < actuatorCount; i++) {
+        if (openActuator(actuators[i]) != kIOReturnSuccess) continue;
+        IOReturn result = actuate(actuators[i], pattern, 0, 0.0f, 0.0f);
+        closeActuator(actuators[i]);
+        if (result == kIOReturnSuccess) anySuccess = true;
     }
-    // Predefined pulse; no custom waveform or continuous vibration.
-    IOReturn result = actuate(actuator, pattern, 0, 0.0f, 0.0f);
-    IOReturn closed = closeActuator(actuator);
-    if (result != kIOReturnSuccess || closed != kIOReturnSuccess) {
-        TPHapticShutdown(); return false;
-    }
-    return true;
+    return anySuccess;
 }
 
 bool TPHapticClick(void) { return performHaptic(3); }
 bool TPHapticCenter(void) { return performHaptic(6); }
 
 void TPHapticShutdown(void) {
-    if (actuator) { CFRelease(actuator); actuator = NULL; }
+    for (int32_t i = 0; i < actuatorCount; i++) {
+        if (actuators[i]) { CFRelease(actuators[i]); actuators[i] = NULL; }
+    }
+    actuatorCount = 0;
 }
