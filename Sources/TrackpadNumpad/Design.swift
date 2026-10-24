@@ -352,6 +352,186 @@ struct PressStyle: ButtonStyle {
     }
 }
 
+// MARK: - Structured shortcut editor
+
+private enum ShortcutMode: Int {
+    case modifiersOnly = 0
+    case modifierPlusKey = 1
+}
+
+struct ShortcutEditorView: View {
+    @Binding var shortcut: CustomShortcut
+    @State private var mode: ShortcutMode
+    // Modifier-only: device-specific bits
+    @State private var deviceBits: UInt64
+    // Modifier+key: generic modifier flags + keyCode
+    @State private var genericMods: UInt64
+    @State private var keyCode: UInt16
+    @State private var recordingKey = false
+    @State private var keyMonitor: Any?
+
+    init(shortcut: Binding<CustomShortcut>) {
+        self._shortcut = shortcut
+        let s = shortcut.wrappedValue
+        switch s.kind {
+        case .rightModifierChord:
+            _mode = State(initialValue: .modifiersOnly)
+            _deviceBits = State(initialValue: CustomShortcut.deviceRightCommand | CustomShortcut.deviceRightOption)
+            _genericMods = State(initialValue: 0)
+            _keyCode = State(initialValue: 0)
+        case .modifierChord:
+            _mode = State(initialValue: .modifiersOnly)
+            _deviceBits = State(initialValue: s.modifiers)
+            _genericMods = State(initialValue: 0)
+            _keyCode = State(initialValue: 0)
+        case .keyCombo:
+            _mode = State(initialValue: .modifierPlusKey)
+            _deviceBits = State(initialValue: 0)
+            _genericMods = State(initialValue: s.modifiers)
+            _keyCode = State(initialValue: s.keyCode)
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Picker(L("Shortcut type"), selection: $mode) {
+                Text(L("Modifiers only")).tag(ShortcutMode.modifiersOnly)
+                Text(L("Modifier + Key")).tag(ShortcutMode.modifierPlusKey)
+            }.pickerStyle(.segmented)
+
+            if mode == .modifiersOnly {
+                modifierOnlyEditor
+            } else {
+                modifierPlusKeyEditor
+            }
+        }
+    }
+
+    // MARK: Modifier-only editor
+
+    private var modifierOnlyEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L("Select 2 or more modifier keys:"))
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+                deviceBitToggle("Left ⌃",  CustomShortcut.deviceLeftControl)
+                deviceBitToggle("Right ⌃", CustomShortcut.deviceRightControl)
+                deviceBitToggle("Left ⇧",  CustomShortcut.deviceLeftShift)
+                deviceBitToggle("Right ⇧", CustomShortcut.deviceRightShift)
+                deviceBitToggle("Left ⌥",  CustomShortcut.deviceLeftOption)
+                deviceBitToggle("Right ⌥", CustomShortcut.deviceRightOption)
+                deviceBitToggle("Left ⌘",  CustomShortcut.deviceLeftCommand)
+                deviceBitToggle("Right ⌘", CustomShortcut.deviceRightCommand)
+            }
+            if CustomShortcut.deviceModifierCount(deviceBits) >= 2 {
+                HStack {
+                    Spacer()
+                    PrimaryButton(title: L("Apply"), compact: true, isDefault: false) {
+                        shortcut = CustomShortcut(kind: .modifierChord, keyCode: 0, modifiers: deviceBits)
+                    }
+                }
+            } else {
+                Text(L("Select at least 2 modifiers."))
+                    .font(.system(size: 11)).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private func deviceBitToggle(_ label: String, _ bit: UInt64) -> some View {
+        let on = deviceBits & bit != 0
+        return Button {
+            deviceBits ^= bit
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: on ? "checkmark.square.fill" : "square")
+                    .foregroundStyle(on ? mint : .white.opacity(0.4))
+                Text(label).font(.system(size: 12, weight: .medium))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 4).padding(.horizontal, 8)
+            .background(on ? mint.opacity(0.08) : .white.opacity(0.03), in: RoundedRectangle(cornerRadius: 6))
+            .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(on ? mint.opacity(0.3) : .white.opacity(0.06), lineWidth: 1))
+        }.buttonStyle(.plain)
+    }
+
+    // MARK: Modifier+Key editor
+
+    private var modifierPlusKeyEditor: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L("Modifiers:"))
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+            HStack(spacing: 10) {
+                genericModToggle("⌃", CGEventFlags.maskControl.rawValue)
+                genericModToggle("⌥", CGEventFlags.maskAlternate.rawValue)
+                genericModToggle("⇧", CGEventFlags.maskShift.rawValue)
+                genericModToggle("⌘", CGEventFlags.maskCommand.rawValue)
+            }
+            HStack {
+                Text(L("Key:")).font(.system(size: 12)).foregroundStyle(.secondary)
+                Spacer()
+                if recordingKey {
+                    Text(L("Press a key…"))
+                        .font(.system(size: 12)).foregroundStyle(mint)
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(mint.opacity(0.1), in: RoundedRectangle(cornerRadius: 6))
+                    Button(L("Cancel")) { stopKeyRecording() }
+                        .font(.system(size: 11)).foregroundStyle(.orange)
+                } else {
+                    Text(keyCode > 0 || genericMods != 0 ? CustomShortcut.keyName(for: keyCode) : "–")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+                    Button(L("Change…")) { startKeyRecording() }
+                        .font(.system(size: 11)).foregroundStyle(mint)
+                }
+            }
+            if genericMods != 0 {
+                HStack {
+                    Spacer()
+                    PrimaryButton(title: L("Apply"), compact: true, isDefault: false) {
+                        shortcut = CustomShortcut(kind: .keyCombo, keyCode: keyCode, modifiers: genericMods)
+                    }
+                }
+            } else {
+                Text(L("Select at least 1 modifier."))
+                    .font(.system(size: 11)).foregroundStyle(.tertiary)
+            }
+        }
+    }
+
+    private func genericModToggle(_ label: String, _ flag: UInt64) -> some View {
+        let on = genericMods & flag != 0
+        return Button {
+            genericMods ^= flag
+        } label: {
+            Text(label)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 36, height: 28)
+                .background(on ? mint.opacity(0.15) : .white.opacity(0.04), in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(on ? mint.opacity(0.4) : .white.opacity(0.08), lineWidth: 1))
+                .foregroundStyle(on ? mint : .white.opacity(0.5))
+        }.buttonStyle(.plain)
+    }
+
+    private func startKeyRecording() {
+        recordingKey = true
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            if event.keyCode == 53 { stopKeyRecording(); return nil }
+            keyCode = event.keyCode
+            stopKeyRecording()
+            return nil
+        }
+    }
+
+    private func stopKeyRecording() {
+        recordingKey = false
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
+    }
+}
+
+// MARK: - Quick recorder (convenience)
+
 struct ShortcutRecorderView: View {
     @Binding var shortcut: CustomShortcut
     @State private var recording = false

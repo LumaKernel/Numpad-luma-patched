@@ -115,3 +115,17 @@
 "You have got it!" = "もう慣れましたね！";
 "You will return here once access is granted" = "許可されるとこの画面に戻ります";
 "Your trackpad, now a numpad." = "トラックパッドがテンキーに。";
+"Shortcut type" = "ショートカットの種類";
+"Modifiers only" = "修飾キーのみ";
+"Modifier + Key" = "修飾キー + キー";
+"Select 2 or more modifier keys:" = "2つ以上の修飾キーを選んでください:";
+"Apply" = "適用";
+"Select at least 2 modifiers." = "修飾キーを2つ以上選んでください。";
+"Modifiers:" = "修飾キー:";
+"Key:" = "キー:";
+"Press a key…" = "キーを押してください…";
+"Change…" = "変更…";
+"Cancel" = "キャンセル";
+"Select at least 1 modifier." = "修飾キーを1つ以上選んでください。";
+"Record new shortcut" = "ショートカットを記録";
+"Record…" = "記録…";

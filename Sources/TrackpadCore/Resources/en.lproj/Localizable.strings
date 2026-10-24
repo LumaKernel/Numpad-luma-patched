@@ -115,3 +115,17 @@
 "You have got it!" = "You have got it!";
 "You will return here once access is granted" = "You will return here once access is granted";
 "Your trackpad, now a numpad." = "Your trackpad, now a numpad.";
+"Shortcut type" = "Shortcut type";
+"Modifiers only" = "Modifiers only";
+"Modifier + Key" = "Modifier + Key";
+"Select 2 or more modifier keys:" = "Select 2 or more modifier keys:";
+"Apply" = "Apply";
+"Select at least 2 modifiers." = "Select at least 2 modifiers.";
+"Modifiers:" = "Modifiers:";
+"Key:" = "Key:";
+"Press a key…" = "Press a key…";
+"Change…" = "Change…";
+"Cancel" = "Cancel";
+"Select at least 1 modifier." = "Select at least 1 modifier.";
+"Record new shortcut" = "Record new shortcut";
+"Record…" = "Record…";

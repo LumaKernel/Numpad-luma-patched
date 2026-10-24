@@ -115,3 +115,17 @@
 "You have got it!" = "손에 익었네요!";
 "You will return here once access is granted" = "허용되면 이 창으로 자동으로 돌아옵니다";
 "Your trackpad, now a numpad." = "트랙패드가 숫자 키패드로";
+"Shortcut type" = "단축키 유형";
+"Modifiers only" = "보조키만";
+"Modifier + Key" = "보조키 + 키";
+"Select 2 or more modifier keys:" = "보조키를 2개 이상 선택하세요:";
+"Apply" = "적용";
+"Select at least 2 modifiers." = "보조키를 2개 이상 선택하세요.";
+"Modifiers:" = "보조키:";
+"Key:" = "키:";
+"Press a key…" = "키를 누르세요…";
+"Change…" = "변경…";
+"Cancel" = "취소";
+"Select at least 1 modifier." = "보조키를 1개 이상 선택하세요.";
+"Record new shortcut" = "단축키 녹화";
+"Record…" = "녹화…";

@@ -81,9 +81,9 @@ final class InputService {
                 let button = Int(event.getIntegerValueField(.mouseEventButtonNumber))
                 switch type {
                 case .mouseMoved:
-                    // Keep raw trackpad gestures from moving the pointer, while
-                    // an external mouse can still reach and drag the overlay.
-                    return ProcessInfo.processInfo.systemUptime - service.lastTrackpadTouch >= 0.25 ? Unmanaged.passUnretained(event) : nil
+                    // Block all pointer movement while the keypad is active.
+                    // The overlay drag uses its own NSWindow event handling.
+                    return nil
                 case .leftMouseDown, .rightMouseDown, .otherMouseDown:
                     let allow = service.clicks.down(button: button,
                         pressure: event.getDoubleValueField(.mouseEventPressure),
