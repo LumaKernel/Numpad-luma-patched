@@ -30,6 +30,7 @@ final class InputService {
     private var source: CFRunLoopSource?
     private var clicks = ClickFilter()
     private var lastTrackpadTouch = -Double.infinity
+    var frozenCursorPosition: CGPoint?
     private let screenZoom = ScreenZoomSuppression()
     private var threeFingerDrag = ThreeFingerDragSuppression()
     var blocksSystemGestures = false {
@@ -62,8 +63,8 @@ final class InputService {
                 guard let context else { return Unmanaged.passUnretained(event) }
                 let service = Unmanaged<InputService>.fromOpaque(context).takeUnretainedValue()
                 if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-                    // Fail open: stop numpad instead of leaving input capture in a partial state.
-                    service.onFailure?()
+                    NSLog("[NumpadLuma] Event tap disabled: \(type.rawValue) (timeout=\(CGEventType.tapDisabledByTimeout.rawValue), user=\(CGEventType.tapDisabledByUserInput.rawValue)). Re-enabling.")
+                    if let port = service.tap { CGEvent.tapEnable(tap: port, enable: true) }
                     return Unmanaged.passUnretained(event)
                 }
                 if type == .keyDown {
@@ -81,20 +82,15 @@ final class InputService {
                 let button = Int(event.getIntegerValueField(.mouseEventButtonNumber))
                 switch type {
                 case .mouseMoved:
-                    // Block all pointer movement while the keypad is active.
-                    // The overlay drag uses its own NSWindow event handling.
+                    // Warp cursor back to frozen position on every move event.
+                    if let pos = service.frozenCursorPosition {
+                        CGWarpMouseCursorPosition(pos)
+                    }
                     return nil
-                case .leftMouseDown, .rightMouseDown, .otherMouseDown:
-                    let allow = service.clicks.down(button: button,
-                        pressure: event.getDoubleValueField(.mouseEventPressure),
-                        recentTrackpadTouch: ProcessInfo.processInfo.systemUptime - service.lastTrackpadTouch < 0.25,
-                        forceSuppress: service.threeFingerDrag.active)
-                    if allow { service.onPhysicalClick?() }
-                    return allow ? Unmanaged.passUnretained(event) : nil
-                case .leftMouseUp, .rightMouseUp, .otherMouseUp:
-                    return service.clicks.up(button: button) ? Unmanaged.passUnretained(event) : nil
-                case .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
-                    return !service.threeFingerDrag.active && service.clicks.drag(button: button) ? Unmanaged.passUnretained(event) : nil
+                case .leftMouseDown, .rightMouseDown, .otherMouseDown,
+                     .leftMouseUp, .rightMouseUp, .otherMouseUp,
+                     .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
+                    return nil
                 default:
                     return nil
                 }
@@ -124,10 +120,20 @@ final class InputService {
         tap = port; source = runSource
         CFRunLoopAddSource(CFRunLoopGetMain(), runSource, .commonModes)
         CGEvent.tapEnable(tap: port, enable: true)
+        // Freeze the cursor at its current position.
+        frozenCursorPosition = NSEvent.mouseLocation
+        // Convert from bottom-left (AppKit) to top-left (CG) coordinates.
+        if let screen = NSScreen.main {
+            frozenCursorPosition = CGPoint(x: frozenCursorPosition!.x,
+                                           y: screen.frame.height - frozenCursorPosition!.y)
+        }
+        CGAssociateMouseAndMouseCursorPosition(0)
         return true
     }
 
     func stop() {
+        frozenCursorPosition = nil
+        CGAssociateMouseAndMouseCursorPosition(1)
         screenZoom.restore()
         if let earlyTap { CGEvent.tapEnable(tap: earlyTap, enable: false); CFMachPortInvalidate(earlyTap) }
         if let earlySource { CFRunLoopRemoveSource(CFRunLoopGetMain(), earlySource, .commonModes) }
