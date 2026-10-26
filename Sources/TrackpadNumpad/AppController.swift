@@ -256,6 +256,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             requestPermission(); return
         }
         guard !IsSecureEventInputEnabled() else { messageText = LocalizedMessage("Turn the keypad on again after leaving Secure Input."); return }
+        // Re-enumerate trackpads so a reconnected Bluetooth device is picked up.
+        TPReinitialize()
         deviceReady = TPInitialize()
         guard deviceReady else { messageText = LocalizedMessage(String(cString: TPError())); showSettings(); return }
         activationInput = FocusedInput.capture(applicationPID: NSApp.isActive ? previousApp?.processIdentifier : nil)

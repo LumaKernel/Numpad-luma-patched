@@ -154,6 +154,15 @@ void TPStop(void) {
     }
     running = false;
 }
+void TPReinitialize(void) {
+    if (running) return; // Must stop first
+    // Release stale device references.
+    if (deviceList) { CFRelease(deviceList); deviceList = NULL; }
+    for (int32_t i = 0; i < deviceCount; i++) devices[i] = NULL;
+    deviceCount = 0;
+    errorMessage = "";
+}
+
 const char *TPError(void) { return errorMessage; }
 int32_t TPDeviceCount(void) { return deviceCount; }
 
