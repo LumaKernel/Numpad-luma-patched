@@ -87,8 +87,13 @@ public struct TapRecognizer {
         if touches.isEmpty {
             defer { reset() }
             let duration = timestamp - beganAt
-            guard start != nil, !cancelled, duration >= 0.025, duration <= maximumDuration else { return nil }
-            return confirmAtLiftOff ? lastKey : key
+            if confirmAtLiftOff {
+                guard start != nil, !cancelled, duration >= 0.025 else { return nil }
+                return lastKey
+            } else {
+                guard start != nil, !cancelled, duration >= 0.025, duration <= maximumDuration else { return nil }
+                return key
+            }
         }
         guard touches.count == 1, !cancelled else { cancelled = true; return nil }
         let touch = touches[0]
@@ -99,7 +104,7 @@ public struct TapRecognizer {
         }
         if let first = start {
             if confirmAtLiftOff {
-                if touch.id != first.id || timestamp < beganAt || timestamp - beganAt > maximumDuration {
+                if touch.id != first.id || timestamp < beganAt {
                     cancelled = true
                 }
             } else {
