@@ -136,3 +136,7 @@
 "Unavailable (requires signed app bundle)" = "사용 불가 (서명된 앱 번들 필요)";
 "Unknown" = "알 수 없음";
 "Open Login Items in System Settings…" = "시스템 설정의 로그인 항목 열기…";
+"Region" = "영역";
+"Trackpad Region" = "트랙패드 사용 영역";
+"Drag the edges or corners to limit the active area of your trackpad." = "변이나 모서리를 드래그하여 트랙패드의 활성 영역을 조절하세요.";
+"Reset to Full Trackpad" = "전체 트랙패드로 초기화";

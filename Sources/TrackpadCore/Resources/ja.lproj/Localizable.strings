@@ -136,3 +136,7 @@
 "Unavailable (requires signed app bundle)" = "利用不可（署名済みアプリバンドルが必要）";
 "Unknown" = "不明";
 "Open Login Items in System Settings…" = "システム設定のログイン項目を開く…";
+"Region" = "領域";
+"Trackpad Region" = "トラックパッドの使用領域";
+"Drag the edges or corners to limit the active area of your trackpad." = "辺や角をドラッグして、トラックパッドの有効範囲を調整します。";
+"Reset to Full Trackpad" = "全面に戻す";

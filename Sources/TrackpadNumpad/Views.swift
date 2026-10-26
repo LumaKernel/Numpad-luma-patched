@@ -143,6 +143,7 @@ struct SettingsView: View {
             }
             TabView {
                 generalSettings.tabItem { Text(L("General")) }
+                regionSettings.tabItem { Text(L("Region")) }
                 shortcutSettings.tabItem { Text(L("Shortcut")) }
                 hapticSettings.tabItem { Text(L("Haptics")) }
                 experimentalSettings.tabItem { Text(L("Experimental")) }
@@ -216,6 +217,30 @@ struct SettingsView: View {
             Text(L("Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }.padding(20)
+    }
+
+    private var regionSettings: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L("Trackpad Region")).font(.headline)
+            Text(L("Drag the edges or corners to limit the active area of your trackpad."))
+                .font(.system(size: 12)).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            RegionCropView(region: $model.padRegion, layout: model.controlSide)
+                .frame(height: 280)
+            HStack {
+                if !model.padRegion.isFullPad {
+                    let w = Int(model.padRegion.width * 100)
+                    let h = Int(model.padRegion.height * 100)
+                    Text("\(w)% × \(h)%")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button(L("Reset to Full Trackpad")) { model.resetPadRegion() }
+                    .disabled(model.padRegion.isFullPad)
+            }
             Spacer(minLength: 0)
         }.padding(20)
     }
@@ -355,5 +380,182 @@ struct SettingsView: View {
                 }
                 .padding(20)
         }
+    }
+}
+
+// MARK: - Region Crop View
+
+private enum DragHandle: Hashable {
+    case topLeft, topRight, bottomLeft, bottomRight
+    case top, bottom, leading, trailing
+}
+
+struct RegionCropView: View {
+    @Binding var region: PadRegion
+    var layout: KeypadLayout
+
+    @State private var activeHandle: DragHandle?
+    @State private var dragStart: PadRegion?
+    @State private var padSize: CGSize = .zero
+
+    private let handleSize: CGFloat = 14
+    private let edgeHitSize: CGFloat = 10
+    private let minRegionFraction = 0.1
+
+    var body: some View {
+        GeometryReader { geometry in
+            let pad = padRect(in: geometry.size)
+            // Trackpad background
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.white.opacity(0.03))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.white.opacity(0.08), lineWidth: 1))
+                .frame(width: pad.width, height: pad.height)
+                .position(x: pad.midX, y: pad.midY)
+
+            // Dimmed area outside region
+            let crop = cropRect(in: pad)
+            dimOverlay(pad: pad, crop: crop)
+
+            // Keypad preview inside crop
+            KeypadView(highlighted: nil, compact: true, layout: layout)
+                .frame(width: crop.width - 4, height: crop.height - 4)
+                .position(x: crop.midX, y: crop.midY)
+                .allowsHitTesting(false)
+
+            // Crop border
+            Rectangle()
+                .strokeBorder(mint, lineWidth: 2)
+                .frame(width: crop.width, height: crop.height)
+                .position(x: crop.midX, y: crop.midY)
+
+            // Corner handles
+            cornerHandle(.topLeft, at: CGPoint(x: crop.minX, y: crop.minY))
+            cornerHandle(.topRight, at: CGPoint(x: crop.maxX, y: crop.minY))
+            cornerHandle(.bottomLeft, at: CGPoint(x: crop.minX, y: crop.maxY))
+            cornerHandle(.bottomRight, at: CGPoint(x: crop.maxX, y: crop.maxY))
+
+            // Edge handles
+            edgeHandle(.top, at: CGPoint(x: crop.midX, y: crop.minY), horizontal: true)
+            edgeHandle(.bottom, at: CGPoint(x: crop.midX, y: crop.maxY), horizontal: true)
+            edgeHandle(.leading, at: CGPoint(x: crop.minX, y: crop.midY), horizontal: false)
+            edgeHandle(.trailing, at: CGPoint(x: crop.maxX, y: crop.midY), horizontal: false)
+
+            Color.clear
+                .onAppear { padSize = pad.size }
+                .onChange(of: geometry.size) { _ in padSize = padRect(in: geometry.size).size }
+        }
+        .contentShape(Rectangle())
+    }
+
+    private func padRect(in size: CGSize) -> CGRect {
+        let aspect = PadGeometry.aspectRatio
+        let padW = min(size.width - 16, (size.height - 16) * aspect)
+        let padH = padW / aspect
+        return CGRect(x: (size.width - padW) / 2, y: (size.height - padH) / 2, width: padW, height: padH)
+    }
+
+    private func cropRect(in pad: CGRect) -> CGRect {
+        // Trackpad Y is bottom-up, view Y is top-down
+        let x = pad.minX + region.minX * pad.width
+        let y = pad.minY + (1 - region.maxY) * pad.height
+        let w = region.width * pad.width
+        let h = region.height * pad.height
+        return CGRect(x: x, y: y, width: w, height: h)
+    }
+
+    private func dimOverlay(pad: CGRect, crop: CGRect) -> some View {
+        Canvas { context, _ in
+            var path = Path(pad)
+            path.addPath(Path(crop))
+            context.fill(path, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func cornerHandle(_ handle: DragHandle, at point: CGPoint) -> some View {
+        Circle()
+            .fill(mint)
+            .frame(width: handleSize, height: handleSize)
+            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+            .position(point)
+            .gesture(dragGesture(handle))
+            .onHover { inside in
+                if inside {
+                    switch handle {
+                    case .topLeft, .bottomRight: NSCursor.crosshair.push()
+                    case .topRight, .bottomLeft: NSCursor.crosshair.push()
+                    default: break
+                    }
+                } else { NSCursor.pop() }
+            }
+    }
+
+    private func edgeHandle(_ handle: DragHandle, at point: CGPoint, horizontal: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(mint.opacity(0.8))
+            .frame(width: horizontal ? 28 : 6, height: horizontal ? 6 : 28)
+            .position(point)
+            .gesture(dragGesture(handle))
+            .onHover { inside in
+                if inside {
+                    if horizontal { NSCursor.resizeUpDown.push() } else { NSCursor.resizeLeftRight.push() }
+                } else { NSCursor.pop() }
+            }
+    }
+
+    private func dragGesture(_ handle: DragHandle) -> some Gesture {
+        DragGesture(minimumDistance: 1)
+            .onChanged { value in
+                if dragStart == nil { dragStart = region }
+                guard let start = dragStart else { return }
+                updateRegion(handle: handle, translation: value.translation, start: start, geometry: value)
+            }
+            .onEnded { _ in
+                dragStart = nil
+            }
+    }
+
+    private func updateRegion(handle: DragHandle, translation: CGSize, start: PadRegion, geometry: DragGesture.Value) {
+        guard padSize.width > 0, padSize.height > 0 else { return }
+
+        let dx = translation.width / padSize.width
+        // View Y is top-down, trackpad Y is bottom-up
+        let dy = -translation.height / padSize.height
+
+        var minX = start.minX
+        var minY = start.minY
+        var maxX = start.maxX
+        var maxY = start.maxY
+
+        switch handle {
+        case .topLeft:
+            minX = start.minX + dx
+            maxY = start.maxY + dy  // top in view = maxY in trackpad coords
+        case .topRight:
+            maxX = start.maxX + dx
+            maxY = start.maxY + dy
+        case .bottomLeft:
+            minX = start.minX + dx
+            minY = start.minY + dy
+        case .bottomRight:
+            maxX = start.maxX + dx
+            minY = start.minY + dy
+        case .top:
+            maxY = start.maxY + dy
+        case .bottom:
+            minY = start.minY + dy
+        case .leading:
+            minX = start.minX + dx
+        case .trailing:
+            maxX = start.maxX + dx
+        }
+
+        // Enforce minimum size and bounds
+        minX = max(0, min(minX, maxX - minRegionFraction))
+        minY = max(0, min(minY, maxY - minRegionFraction))
+        maxX = min(1, max(maxX, minX + minRegionFraction))
+        maxY = min(1, max(maxY, minY + minRegionFraction))
+
+        region = PadRegion(minX: minX, minY: minY, maxX: maxX, maxY: maxY)
     }
 }

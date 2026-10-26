@@ -136,3 +136,7 @@
 "Unavailable (requires signed app bundle)" = "Unavailable (requires signed app bundle)";
 "Unknown" = "Unknown";
 "Open Login Items in System Settings…" = "Open Login Items in System Settings…";
+"Region" = "Region";
+"Trackpad Region" = "Trackpad Region";
+"Drag the edges or corners to limit the active area of your trackpad." = "Drag the edges or corners to limit the active area of your trackpad.";
+"Reset to Full Trackpad" = "Reset to Full Trackpad";
