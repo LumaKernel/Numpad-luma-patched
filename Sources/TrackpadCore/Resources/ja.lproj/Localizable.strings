@@ -129,3 +129,10 @@
 "Select at least 1 modifier." = "修飾キーを1つ以上選んでください。";
 "Record new shortcut" = "ショートカットを記録";
 "Record…" = "記録…";
+"Start at Login" = "ログイン時に起動";
+"Enabled" = "有効";
+"Not registered" = "未登録";
+"Requires approval in System Settings" = "システム設定での許可が必要";
+"Unavailable (requires signed app bundle)" = "利用不可（署名済みアプリバンドルが必要）";
+"Unknown" = "不明";
+"Open Login Items in System Settings…" = "システム設定のログイン項目を開く…";

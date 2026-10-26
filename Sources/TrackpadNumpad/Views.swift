@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 import TrackpadCore
 
 private let ink = Color.white.opacity(0.9)
@@ -176,6 +177,26 @@ struct SettingsView: View {
                     .frame(width: 160)
                 }
                 Divider()
+                HStack {
+                    Toggle(L("Start at Login"), isOn: Binding(
+                        get: { model.loginItemEnabled },
+                        set: { model.setLoginItem(enabled: $0) }
+                    ))
+                    .toggleStyle(.switch).tint(mint)
+                    Spacer()
+                    Text(loginItemStatusLabel)
+                        .font(.system(size: 11))
+                        .foregroundStyle(loginItemStatusColor)
+                }
+                if model.loginItemStatus == .requiresApproval {
+                    Button(L("Open Login Items in System Settings…")) {
+                        if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") {
+                            NSWorkspace.shared.open(url)
+                        }
+                    }
+                    .font(.system(size: 11))
+                }
+                Divider()
                 VStack(alignment: .leading, spacing: 12) {
                     Text(L("Operator Position")).font(.headline)
                     Picker(L("Operator Position"), selection: $model.controlSide) {
@@ -258,6 +279,26 @@ struct SettingsView: View {
         }
         .toggleStyle(.switch).tint(mint)
         .padding(20)
+    }
+
+    private var loginItemStatusLabel: String {
+        switch model.loginItemStatus {
+        case .enabled: return L("Enabled")
+        case .notRegistered: return L("Not registered")
+        case .requiresApproval: return L("Requires approval in System Settings")
+        case .notFound: return L("Unavailable (requires signed app bundle)")
+        @unknown default: return L("Unknown")
+        }
+    }
+
+    private var loginItemStatusColor: Color {
+        switch model.loginItemStatus {
+        case .enabled: return .green
+        case .requiresApproval: return .orange
+        case .notFound: return .red
+        case .notRegistered: return .secondary
+        @unknown default: return .secondary
+        }
     }
 
     private var experimentalSettings: some View {

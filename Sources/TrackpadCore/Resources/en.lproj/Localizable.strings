@@ -129,3 +129,10 @@
 "Select at least 1 modifier." = "Select at least 1 modifier.";
 "Record new shortcut" = "Record new shortcut";
 "Record…" = "Record…";
+"Start at Login" = "Start at Login";
+"Enabled" = "Enabled";
+"Not registered" = "Not registered";
+"Requires approval in System Settings" = "Requires approval in System Settings";
+"Unavailable (requires signed app bundle)" = "Unavailable (requires signed app bundle)";
+"Unknown" = "Unknown";
+"Open Login Items in System Settings…" = "Open Login Items in System Settings…";

@@ -3,6 +3,7 @@ import SwiftUI
 import ApplicationServices
 import Carbon
 import QuartzCore
+import ServiceManagement
 import CTrackpad
 import TrackpadCore
 
@@ -99,6 +100,29 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         updateMenu()
     }
 
+    @Published private(set) var loginItemStatus = SMAppService.mainApp.status
+
+    var loginItemEnabled: Bool {
+        loginItemStatus == .enabled
+    }
+
+    func setLoginItem(enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+        } catch {
+            // Status will reflect the actual state below.
+        }
+        loginItemStatus = SMAppService.mainApp.status
+    }
+
+    func refreshLoginItemStatus() {
+        loginItemStatus = SMAppService.mainApp.status
+    }
+
     private var item: NSStatusItem!
     private var panel: NSPanel?
     private var snapPanel: OverlayPanel?
@@ -169,6 +193,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             if wasTrusted != self.trusted { self.updateMenu() }
             if self.trusted { self.optionShortcut.start() } else { self.optionShortcut.stop() }
             if self.enabled && !self.trusted { self.disable(); self.messageText = LocalizedMessage("Please allow Accessibility access again.") }
+            self.refreshLoginItemStatus()
             // Secure input must not leave the pointer trapped if Escape is unavailable.
             if self.enabled && IsSecureEventInputEnabled() { self.disable(); self.messageText = LocalizedMessage("The keypad is paused while Secure Input is active.") }
         }
