@@ -385,67 +385,99 @@ struct SettingsView: View {
 
 // MARK: - Region Crop View
 
-private enum DragHandle: Hashable {
-    case topLeft, topRight, bottomLeft, bottomRight
-    case top, bottom, leading, trailing
+private enum DragEdge {
+    case minX, maxX, minY, maxY
 }
 
 struct RegionCropView: View {
     @Binding var region: PadRegion
     var layout: KeypadLayout
 
-    @State private var activeHandle: DragHandle?
+    @State private var dragEdges: Set<DragEdge> = []
     @State private var dragStart: PadRegion?
-    @State private var padSize: CGSize = .zero
+    @State private var viewSize: CGSize = .zero
 
-    private let handleSize: CGFloat = 14
-    private let edgeHitSize: CGFloat = 10
-    private let minRegionFraction = 0.1
+    private let handleRadius: CGFloat = 7
+    private let grabDistance: CGFloat = 18
+    private let minFraction = 0.1
 
     var body: some View {
         GeometryReader { geometry in
             let pad = padRect(in: geometry.size)
+            let crop = cropRect(in: pad)
+
             // Trackpad background
             RoundedRectangle(cornerRadius: 12)
                 .fill(Color.white.opacity(0.03))
                 .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(.white.opacity(0.08), lineWidth: 1))
                 .frame(width: pad.width, height: pad.height)
-                .position(x: pad.midX, y: pad.midY)
+                .offset(x: pad.minX, y: pad.minY)
 
             // Dimmed area outside region
-            let crop = cropRect(in: pad)
-            dimOverlay(pad: pad, crop: crop)
+            Canvas { context, size in
+                var path = Path(pad)
+                path.addPath(Path(crop))
+                context.fill(path, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
+            }
+            .allowsHitTesting(false)
 
             // Keypad preview inside crop
             KeypadView(highlighted: nil, compact: true, layout: layout)
-                .frame(width: crop.width - 4, height: crop.height - 4)
-                .position(x: crop.midX, y: crop.midY)
+                .frame(width: max(0, crop.width - 4), height: max(0, crop.height - 4))
+                .offset(x: crop.minX + 2, y: crop.minY + 2)
                 .allowsHitTesting(false)
 
             // Crop border
-            Rectangle()
-                .strokeBorder(mint, lineWidth: 2)
-                .frame(width: crop.width, height: crop.height)
-                .position(x: crop.midX, y: crop.midY)
+            Path(crop)
+                .stroke(mint, lineWidth: 2)
+                .allowsHitTesting(false)
 
-            // Corner handles
-            cornerHandle(.topLeft, at: CGPoint(x: crop.minX, y: crop.minY))
-            cornerHandle(.topRight, at: CGPoint(x: crop.maxX, y: crop.minY))
-            cornerHandle(.bottomLeft, at: CGPoint(x: crop.minX, y: crop.maxY))
-            cornerHandle(.bottomRight, at: CGPoint(x: crop.maxX, y: crop.maxY))
+            // Corner dots (visual only)
+            ForEach(cornerPoints(crop), id: \.x) { pt in
+                Circle().fill(mint)
+                    .frame(width: handleRadius * 2, height: handleRadius * 2)
+                    .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
+                    .offset(x: pt.x - handleRadius, y: pt.y - handleRadius)
+                    .allowsHitTesting(false)
+            }
 
-            // Edge handles
-            edgeHandle(.top, at: CGPoint(x: crop.midX, y: crop.minY), horizontal: true)
-            edgeHandle(.bottom, at: CGPoint(x: crop.midX, y: crop.maxY), horizontal: true)
-            edgeHandle(.leading, at: CGPoint(x: crop.minX, y: crop.midY), horizontal: false)
-            edgeHandle(.trailing, at: CGPoint(x: crop.maxX, y: crop.midY), horizontal: false)
+            // Edge bars (visual only)
+            ForEach(Array(edgeBars(crop).enumerated()), id: \.offset) { _, bar in
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(mint.opacity(0.8))
+                    .frame(width: bar.size.width, height: bar.size.height)
+                    .offset(x: bar.origin.x, y: bar.origin.y)
+                    .allowsHitTesting(false)
+            }
 
+            // Invisible interaction layer over the pad area
             Color.clear
-                .onAppear { padSize = pad.size }
-                .onChange(of: geometry.size) { _ in padSize = padRect(in: geometry.size).size }
+                .frame(width: pad.width + grabDistance * 2, height: pad.height + grabDistance * 2)
+                .contentShape(Rectangle())
+                .offset(x: pad.minX - grabDistance, y: pad.minY - grabDistance)
+                .gesture(
+                    DragGesture(minimumDistance: 1, coordinateSpace: .local)
+                        .onChanged { value in
+                            // Adjust for the offset of this view
+                            let start = CGPoint(x: value.startLocation.x + pad.minX - grabDistance,
+                                                y: value.startLocation.y + pad.minY - grabDistance)
+                            if dragStart == nil {
+                                dragStart = region
+                                dragEdges = resolveEdges(at: start, crop: crop)
+                            }
+                            guard let initial = dragStart, !dragEdges.isEmpty else { return }
+                            applyDrag(edges: dragEdges, translation: value.translation, start: initial, padSize: pad.size)
+                        }
+                        .onEnded { _ in
+                            dragStart = nil
+                            dragEdges = []
+                        }
+                )
         }
-        .contentShape(Rectangle())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
+
+    // MARK: - Geometry
 
     private func padRect(in size: CGSize) -> CGRect {
         let aspect = PadGeometry.aspectRatio
@@ -455,7 +487,6 @@ struct RegionCropView: View {
     }
 
     private func cropRect(in pad: CGRect) -> CGRect {
-        // Trackpad Y is bottom-up, view Y is top-down
         let x = pad.minX + region.minX * pad.width
         let y = pad.minY + (1 - region.maxY) * pad.height
         let w = region.width * pad.width
@@ -463,99 +494,55 @@ struct RegionCropView: View {
         return CGRect(x: x, y: y, width: w, height: h)
     }
 
-    private func dimOverlay(pad: CGRect, crop: CGRect) -> some View {
-        Canvas { context, _ in
-            var path = Path(pad)
-            path.addPath(Path(crop))
-            context.fill(path, with: .color(.black.opacity(0.45)), style: FillStyle(eoFill: true))
-        }
-        .allowsHitTesting(false)
+    private func cornerPoints(_ crop: CGRect) -> [CGPoint] {
+        [CGPoint(x: crop.minX, y: crop.minY), CGPoint(x: crop.maxX, y: crop.minY),
+         CGPoint(x: crop.minX, y: crop.maxY), CGPoint(x: crop.maxX, y: crop.maxY)]
     }
 
-    private func cornerHandle(_ handle: DragHandle, at point: CGPoint) -> some View {
-        Circle()
-            .fill(mint)
-            .frame(width: handleSize, height: handleSize)
-            .shadow(color: .black.opacity(0.4), radius: 2, y: 1)
-            .position(point)
-            .gesture(dragGesture(handle))
-            .onHover { inside in
-                if inside {
-                    switch handle {
-                    case .topLeft, .bottomRight: NSCursor.crosshair.push()
-                    case .topRight, .bottomLeft: NSCursor.crosshair.push()
-                    default: break
-                    }
-                } else { NSCursor.pop() }
-            }
+    private func edgeBars(_ crop: CGRect) -> [CGRect] {
+        [CGRect(x: crop.midX - 14, y: crop.minY - 3, width: 28, height: 6),
+         CGRect(x: crop.midX - 14, y: crop.maxY - 3, width: 28, height: 6),
+         CGRect(x: crop.minX - 3, y: crop.midY - 14, width: 6, height: 28),
+         CGRect(x: crop.maxX - 3, y: crop.midY - 14, width: 6, height: 28)]
     }
 
-    private func edgeHandle(_ handle: DragHandle, at point: CGPoint, horizontal: Bool) -> some View {
-        RoundedRectangle(cornerRadius: 3)
-            .fill(mint.opacity(0.8))
-            .frame(width: horizontal ? 28 : 6, height: horizontal ? 6 : 28)
-            .position(point)
-            .gesture(dragGesture(handle))
-            .onHover { inside in
-                if inside {
-                    if horizontal { NSCursor.resizeUpDown.push() } else { NSCursor.resizeLeftRight.push() }
-                } else { NSCursor.pop() }
-            }
+    // MARK: - Hit testing
+
+    private func resolveEdges(at point: CGPoint, crop: CGRect) -> Set<DragEdge> {
+        var edges = Set<DragEdge>()
+        let dLeft = abs(point.x - crop.minX)
+        let dRight = abs(point.x - crop.maxX)
+        let dTop = abs(point.y - crop.minY)
+        let dBottom = abs(point.y - crop.maxY)
+
+        if dLeft < grabDistance { edges.insert(.minX) }
+        else if dRight < grabDistance { edges.insert(.maxX) }
+        if dTop < grabDistance { edges.insert(.maxY) }  // view top = trackpad maxY
+        else if dBottom < grabDistance { edges.insert(.minY) }  // view bottom = trackpad minY
+
+        // If we're inside the crop but far from any edge, do nothing
+        if edges.isEmpty { return [] }
+        return edges
     }
 
-    private func dragGesture(_ handle: DragHandle) -> some Gesture {
-        DragGesture(minimumDistance: 1)
-            .onChanged { value in
-                if dragStart == nil { dragStart = region }
-                guard let start = dragStart else { return }
-                updateRegion(handle: handle, translation: value.translation, start: start, geometry: value)
-            }
-            .onEnded { _ in
-                dragStart = nil
-            }
-    }
+    // MARK: - Drag application
 
-    private func updateRegion(handle: DragHandle, translation: CGSize, start: PadRegion, geometry: DragGesture.Value) {
+    private func applyDrag(edges: Set<DragEdge>, translation: CGSize, start: PadRegion, padSize: CGSize) {
         guard padSize.width > 0, padSize.height > 0 else { return }
-
         let dx = translation.width / padSize.width
-        // View Y is top-down, trackpad Y is bottom-up
         let dy = -translation.height / padSize.height
 
-        var minX = start.minX
-        var minY = start.minY
-        var maxX = start.maxX
-        var maxY = start.maxY
+        var x0 = start.minX, y0 = start.minY, x1 = start.maxX, y1 = start.maxY
+        if edges.contains(.minX) { x0 = start.minX + dx }
+        if edges.contains(.maxX) { x1 = start.maxX + dx }
+        if edges.contains(.minY) { y0 = start.minY + dy }
+        if edges.contains(.maxY) { y1 = start.maxY + dy }
 
-        switch handle {
-        case .topLeft:
-            minX = start.minX + dx
-            maxY = start.maxY + dy  // top in view = maxY in trackpad coords
-        case .topRight:
-            maxX = start.maxX + dx
-            maxY = start.maxY + dy
-        case .bottomLeft:
-            minX = start.minX + dx
-            minY = start.minY + dy
-        case .bottomRight:
-            maxX = start.maxX + dx
-            minY = start.minY + dy
-        case .top:
-            maxY = start.maxY + dy
-        case .bottom:
-            minY = start.minY + dy
-        case .leading:
-            minX = start.minX + dx
-        case .trailing:
-            maxX = start.maxX + dx
-        }
+        x0 = max(0, min(x0, x1 - minFraction))
+        y0 = max(0, min(y0, y1 - minFraction))
+        x1 = min(1, max(x1, x0 + minFraction))
+        y1 = min(1, max(y1, y0 + minFraction))
 
-        // Enforce minimum size and bounds
-        minX = max(0, min(minX, maxX - minRegionFraction))
-        minY = max(0, min(minY, maxY - minRegionFraction))
-        maxX = min(1, max(maxX, minX + minRegionFraction))
-        maxY = min(1, max(maxY, minY + minRegionFraction))
-
-        region = PadRegion(minX: minX, minY: minY, maxX: maxX, maxY: maxY)
+        region = PadRegion(minX: x0, minY: y0, maxX: x1, maxY: y1)
     }
 }
