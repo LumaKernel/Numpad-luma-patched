@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*-luma.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Parse version from tag
+        id: version
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          # v0.0.4-luma.1 -> upstream=0.0.4, luma=1
+          upstream="$(echo "$tag" | sed 's/^v//; s/-luma\..*//')"
+          luma="$(echo "$tag" | sed 's/.*-luma\.//')"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
+          echo "luma=$luma" >> "$GITHUB_OUTPUT"
+          echo "display=${upstream}-luma.${luma}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify VERSION file matches upstream
+        run: |
+          file_version="$(cat VERSION | tr -d '[:space:]')"
+          if [[ "$file_version" != "${{ steps.version.outputs.upstream }}" ]]; then
+            echo "VERSION file ($file_version) does not match tag upstream version (${{ steps.version.outputs.upstream }})" >&2
+            exit 1
+          fi
+
+      - name: Import signing certificate
+        if: env.CERT_P12_BASE64 != ''
+        env:
+          CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
+          CERT_P12_PASSWORD: ${{ secrets.CERT_P12_PASSWORD }}
+        run: |
+          echo "$CERT_P12_BASE64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CERT_P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          rm /tmp/cert.p12
+
+      - name: Store notarytool credentials
+        if: env.NOTARY_APPLE_ID != ''
+        env:
+          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
+          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
+          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
+        run: |
+          xcrun notarytool store-credentials "release" \
+            --apple-id "$NOTARY_APPLE_ID" \
+            --password "$NOTARY_PASSWORD" \
+            --team-id "$NOTARY_TEAM_ID"
+
+      - name: Build universal DMG
+        env:
+          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
+          NOTARY_PROFILE: ${{ secrets.SIGN_IDENTITY != '' && secrets.NOTARY_APPLE_ID != '' && 'release' || '' }}
+        run: bash scripts/build-dmg.sh
+
+      - name: Rename artifacts with luma version
+        run: |
+          upstream="${{ steps.version.outputs.upstream }}"
+          display="${{ steps.version.outputs.display }}"
+          cd dist
+          mv "NumpadLuma-${upstream}-universal.dmg" "NumpadLuma-${display}-universal.dmg"
+          mv "NumpadLuma-${upstream}-SHA256SUMS.txt" "NumpadLuma-${display}-SHA256SUMS.txt"
+          # Recompute checksum with new filename
+          shasum -a 256 "NumpadLuma-${display}-universal.dmg" > "NumpadLuma-${display}-SHA256SUMS.txt"
+
+      - name: Run tests
+        run: swift test
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          display="${{ steps.version.outputs.display }}"
+          signed=""
+          if [[ -n "${{ secrets.SIGN_IDENTITY }}" ]]; then
+            signed="The app and DMG are Developer ID signed and notarized by Apple."
+          else
+            signed="This is an unsigned test build. Not notarized."
+          fi
+          gh release create "$tag" \
+            --title "NumpadLuma ${display}" \
+            --notes "$(cat <<EOF
+## NumpadLuma ${display}
+
+Based on upstream Numpad ${{ steps.version.outputs.upstream }}.
+
+${signed}
+
+## Download
+
+Quit the older copy, open \`NumpadLuma-${display}-universal.dmg\`, and replace **NumpadLuma** in **Applications**.
+Supports macOS 13+ on Apple Silicon and Intel Macs.
+
+SHA-256 checksums are included in \`NumpadLuma-${display}-SHA256SUMS.txt\`.
+EOF
+            )" \
+            "dist/NumpadLuma-${display}-universal.dmg" \
+            "dist/NumpadLuma-${display}-SHA256SUMS.txt"
