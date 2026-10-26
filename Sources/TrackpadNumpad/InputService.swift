@@ -322,7 +322,7 @@ final class ActivationShortcut {
             keyMask | flagsMask
         }
         guard let port = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
-            options: .listenOnly, eventsOfInterest: eventMask,
+            options: .defaultTap, eventsOfInterest: eventMask,
             callback: { _, type, event, context in
                 guard let context else { return Unmanaged.passUnretained(event) }
                 let shortcutObj = Unmanaged<ActivationShortcut>.fromOpaque(context).takeUnretainedValue()
@@ -357,6 +357,7 @@ final class ActivationShortcut {
                         let expectedMods = shortcutObj.shortcut.modifiers & modifierMask
                         if keyCode == shortcutObj.shortcut.keyCode && currentMods == expectedMods {
                             DispatchQueue.main.async { shortcutObj.action?() }
+                            return nil // Consume the event so it doesn't reach the focused app
                         }
                     }
                 }
