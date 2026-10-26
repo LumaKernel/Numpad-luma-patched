@@ -59,31 +59,52 @@ struct GuideView: View {
         VStack(spacing: 8) {
             GeometryReader { geometry in
                 let region = model.padRegion
-                let regionAspect = region.isFullPad
-                    ? PadGeometry.aspectRatio
-                    : (region.width * PadGeometry.aspectRatio) / region.height
+                let w = geometry.size.width
+                let h = geometry.size.height
+                // Region rect in view coordinates (view Y is top-down, trackpad Y is bottom-up)
+                let rx = region.minX * w
+                let ry = (1 - region.maxY) * h
+                let rw = region.width * w
+                let rh = region.height * h
+                let cropRect = CGRect(x: rx, y: ry, width: rw, height: rh)
+
                 ZStack(alignment: .topLeading) {
+                    // Keypad positioned inside the region area
                     KeypadView(highlighted: model.highlighted, compact: true, layout: model.controlSide)
-                        .transformEffect(model.effectiveTransform.inverse.screenTransform(size: geometry.size))
+                        .transformEffect(model.effectiveTransform.inverse.screenTransform(size: CGSize(width: rw, height: rh)))
+                        .frame(width: rw, height: rh)
+                        .offset(x: rx, y: ry)
                         .animation(.easeOut(duration: (NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || model.calibrationTracking) ? 0 : 0.18), value: model.effectiveTransform)
+
+                    // Dim area outside region
+                    if !region.isFullPad {
+                        Canvas { context, size in
+                            var path = Path(CGRect(origin: .zero, size: size))
+                            path.addPath(Path(cropRect))
+                            context.fill(path, with: .color(.black.opacity(0.35)), style: FillStyle(eoFill: true))
+                        }
+                        .allowsHitTesting(false)
+
+                        // Region border
+                        Path(cropRect)
+                            .stroke(mint.opacity(0.4), lineWidth: 1)
+                            .allowsHitTesting(false)
+                    }
+
+                    // Touch dots (always in full-trackpad coordinates)
                     ForEach(Array(model.touches.enumerated()), id: \.offset) { _, touch in
-                        // Remap raw touch into region-relative coordinates for display
-                        let rx = region.isFullPad ? touch.x : (touch.x - region.minX) / region.width
-                        let ry = region.isFullPad ? touch.y : (touch.y - region.minY) / region.height
-                        let inside = rx >= 0 && rx <= 1 && ry >= 0 && ry <= 1
+                        let inside = touch.x >= region.minX && touch.x <= region.maxX &&
+                                     touch.y >= region.minY && touch.y <= region.maxY
                         Circle().fill(mint.opacity(inside ? 0.25 : 0.08))
                             .overlay(Circle().strokeBorder(mint.opacity(inside ? 0.8 : 0.2), lineWidth: 1))
                             .frame(width: 18, height: 18)
-                            .position(x: min(1, max(0, rx)) * geometry.size.width,
-                                      y: (1 - min(1, max(0, ry))) * geometry.size.height)
+                            .position(x: min(1, max(0, touch.x)) * w,
+                                      y: (1 - min(1, max(0, touch.y))) * h)
                     }
                 }
                 .clipped()
             }
-            .aspectRatio(model.padRegion.isFullPad
-                ? PadGeometry.aspectRatio
-                : (model.padRegion.width * PadGeometry.aspectRatio) / model.padRegion.height,
-                contentMode: .fit)
+            .aspectRatio(PadGeometry.aspectRatio, contentMode: .fit)
             .padding(14)
             .background {
                 TrackpadMaterial()
