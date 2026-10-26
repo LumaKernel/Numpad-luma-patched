@@ -265,6 +265,14 @@ struct SettingsView: View {
             }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
+                Toggle(L("Show Overlay on All Displays"), isOn: $model.showOnAllDisplays)
+                    .toggleStyle(.switch).tint(mint)
+                Text(L("When enabled, the overlay appears on every connected display. Only the primary overlay can be dragged."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
                 Toggle(L("Confirm Key at Lift-Off Position"), isOn: $model.confirmAtLiftOff)
                     .toggleStyle(.switch).tint(mint)
                 Text(L("When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched."))

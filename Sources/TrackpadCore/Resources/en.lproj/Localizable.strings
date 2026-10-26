@@ -141,5 +141,7 @@
 "Drag the edges or corners to limit the active area of your trackpad." = "Drag the edges or corners to limit the active area of your trackpad.";
 "Reset to Full Trackpad" = "Reset to Full Trackpad";
 "Overlay Opacity" = "Overlay Opacity";
+"Show Overlay on All Displays" = "Show Overlay on All Displays";
+"When enabled, the overlay appears on every connected display. Only the primary overlay can be dragged." = "When enabled, the overlay appears on every connected display. Only the primary overlay can be dragged.";
 "Confirm Key at Lift-Off Position" = "Confirm Key at Lift-Off Position";
 "When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched." = "When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched.";

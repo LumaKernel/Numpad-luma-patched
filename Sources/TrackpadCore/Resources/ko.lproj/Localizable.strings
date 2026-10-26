@@ -141,5 +141,7 @@
 "Drag the edges or corners to limit the active area of your trackpad." = "변이나 모서리를 드래그하여 트랙패드의 활성 영역을 조절하세요.";
 "Reset to Full Trackpad" = "전체 트랙패드로 초기화";
 "Overlay Opacity" = "오버레이 투명도";
+"Show Overlay on All Displays" = "모든 디스플레이에 오버레이 표시";
+"When enabled, the overlay appears on every connected display. Only the primary overlay can be dragged." = "활성화하면 연결된 모든 디스플레이에 오버레이가 표시됩니다. 드래그할 수 있는 것은 기본 오버레이만입니다.";
 "Confirm Key at Lift-Off Position" = "손가락을 뗀 위치로 입력 확정";
 "When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched." = "활성화하면 처음 터치한 위치가 아니라, 손가락을 뗀 위치의 키가 입력됩니다.";

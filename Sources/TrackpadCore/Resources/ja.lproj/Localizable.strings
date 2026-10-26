@@ -141,5 +141,7 @@
 "Drag the edges or corners to limit the active area of your trackpad." = "辺や角をドラッグして、トラックパッドの有効範囲を調整します。";
 "Reset to Full Trackpad" = "全面に戻す";
 "Overlay Opacity" = "オーバーレイの透明度";
+"Show Overlay on All Displays" = "すべてのディスプレイにオーバーレイを表示";
+"When enabled, the overlay appears on every connected display. Only the primary overlay can be dragged." = "有効にすると、接続中のすべてのディスプレイにオーバーレイが表示されます。ドラッグできるのはプライマリのみです。";
 "Confirm Key at Lift-Off Position" = "指を離した位置で入力を確定";
 "When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched." = "有効にすると、最初にタッチした位置ではなく、指を離した位置のキーが入力されます。";
