@@ -13,6 +13,17 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify annotated tag
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          kind="$(git cat-file -t "$tag")"
+          if [[ "$kind" != "tag" ]]; then
+            echo "::error::$tag is a lightweight tag (${kind}). Use an annotated tag: git tag -a $tag -m '...'" >&2
+            exit 1
+          fi
 
       - name: Parse version from tag
         id: version
@@ -25,6 +36,13 @@ jobs:
           echo "upstream=$upstream" >> "$GITHUB_OUTPUT"
           echo "luma=$luma" >> "$GITHUB_OUTPUT"
           echo "display=${upstream}-luma.${luma}" >> "$GITHUB_OUTPUT"
+          # Extract annotated tag message body (skip first line = tag subject)
+          tag_message="$(git tag -l --format='%(contents:body)' "$tag")"
+          {
+            echo "tag_message<<TAG_MSG_EOF"
+            echo "$tag_message"
+            echo "TAG_MSG_EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Verify VERSION file matches upstream
         run: |
@@ -91,13 +109,13 @@ jobs:
           else
             signed="This is an unsigned test build. Not notarized."
           fi
-          gh release create "$tag" \
-            --title "NumpadLuma ${display}" \
-            --notes "$(cat <<EOF
-## NumpadLuma ${display}
+          tag_message="${{ steps.version.outputs.tag_message }}"
+          notes="## NumpadLuma ${display}
 
 Based on upstream Numpad ${{ steps.version.outputs.upstream }}.
-
+${tag_message:+
+$tag_message
+}
 ${signed}
 
 ## Download
@@ -105,8 +123,9 @@ ${signed}
 Quit the older copy, open \`NumpadLuma-${display}-universal.dmg\`, and replace **NumpadLuma** in **Applications**.
 Supports macOS 13+ on Apple Silicon and Intel Macs.
 
-SHA-256 checksums are included in \`NumpadLuma-${display}-SHA256SUMS.txt\`.
-EOF
-            )" \
+SHA-256 checksums are included in \`NumpadLuma-${display}-SHA256SUMS.txt\`."
+          gh release create "$tag" \
+            --title "NumpadLuma ${display}" \
+            --notes "$notes" \
             "dist/NumpadLuma-${display}-universal.dmg" \
             "dist/NumpadLuma-${display}-SHA256SUMS.txt"

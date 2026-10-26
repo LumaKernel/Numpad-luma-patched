@@ -12,6 +12,7 @@ yeonfish6040/Numpad のフォーク。main ブランチが上流のコピー、l
 
 ## Release
 
+- annotated tag を使う: `git tag -a v0.0.4-luma.1 -m "NumpadLuma 0.0.4-luma.1"`
 - `v*-luma.*` タグを push すると GitHub Actions がビルド・リリースを作成する。
 - 署名・公証は Secrets (CERT_P12_BASE64, SIGN_IDENTITY, NOTARY_*) が設定されている場合のみ。
 - 成果物: `NumpadLuma-{upstream-ver}-luma.{luma-ver}-universal.dmg` + SHA256SUMS
