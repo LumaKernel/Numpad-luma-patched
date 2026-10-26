@@ -52,36 +52,7 @@ jobs:
             exit 1
           fi
 
-      - name: Import signing certificate
-        if: env.CERT_P12_BASE64 != ''
-        env:
-          CERT_P12_BASE64: ${{ secrets.CERT_P12_BASE64 }}
-          CERT_P12_PASSWORD: ${{ secrets.CERT_P12_PASSWORD }}
-        run: |
-          echo "$CERT_P12_BASE64" | base64 --decode > /tmp/cert.p12
-          security create-keychain -p "" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-          security import /tmp/cert.p12 -k build.keychain -P "$CERT_P12_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
-          rm /tmp/cert.p12
-
-      - name: Store notarytool credentials
-        if: env.NOTARY_APPLE_ID != ''
-        env:
-          NOTARY_APPLE_ID: ${{ secrets.NOTARY_APPLE_ID }}
-          NOTARY_PASSWORD: ${{ secrets.NOTARY_PASSWORD }}
-          NOTARY_TEAM_ID: ${{ secrets.NOTARY_TEAM_ID }}
-        run: |
-          xcrun notarytool store-credentials "release" \
-            --apple-id "$NOTARY_APPLE_ID" \
-            --password "$NOTARY_PASSWORD" \
-            --team-id "$NOTARY_TEAM_ID"
-
       - name: Build universal DMG
-        env:
-          SIGN_IDENTITY: ${{ secrets.SIGN_IDENTITY }}
-          NOTARY_PROFILE: ${{ secrets.SIGN_IDENTITY != '' && secrets.NOTARY_APPLE_ID != '' && 'release' || '' }}
         run: bash scripts/build-dmg.sh
 
       - name: Rename artifacts with luma version
@@ -104,13 +75,7 @@ jobs:
           DISPLAY_VERSION: ${{ steps.version.outputs.display }}
           UPSTREAM_VERSION: ${{ steps.version.outputs.upstream }}
           TAG_MESSAGE: ${{ steps.version.outputs.tag_message }}
-          SIGNED: ${{ secrets.SIGN_IDENTITY != '' }}
         run: |
-          if [[ "$SIGNED" == "true" ]]; then
-            signed="The app and DMG are Developer ID signed and notarized by Apple."
-          else
-            signed="This is an unsigned test build. Not notarized."
-          fi
           notes_file="$RUNNER_TEMP/release-notes.md"
           {
             echo "## NumpadLuma ${DISPLAY_VERSION}"
@@ -121,12 +86,17 @@ jobs:
               echo "$TAG_MESSAGE"
             fi
             echo
-            echo "$signed"
-            echo
             echo "## Download"
             echo
             echo "Quit the older copy, open \`NumpadLuma-${DISPLAY_VERSION}-universal.dmg\`, and replace **NumpadLuma** in **Applications**."
             echo "Supports macOS 13+ on Apple Silicon and Intel Macs."
+            echo
+            echo "The app is ad-hoc signed and not notarized, so Gatekeeper blocks the first launch."
+            echo "Allow it from **System Settings > Privacy & Security > Open Anyway**, or run:"
+            echo
+            echo '```sh'
+            echo "xattr -dr com.apple.quarantine /Applications/NumpadLuma.app"
+            echo '```'
             echo
             echo "SHA-256 checksums are included in \`NumpadLuma-${DISPLAY_VERSION}-SHA256SUMS.txt\`."
           } > "$notes_file"

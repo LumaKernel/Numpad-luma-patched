@@ -14,7 +14,7 @@ yeonfish6040/Numpad のフォーク。main ブランチが上流のコピー、l
 
 - annotated tag を使う: `git tag -a v0.0.4-luma.1 -m "NumpadLuma 0.0.4-luma.1"`
 - `v*-luma.*` タグを push すると GitHub Actions がビルド・リリースを作成する。
-- 署名・公証は Secrets (CERT_P12_BASE64, SIGN_IDENTITY, NOTARY_*) が設定されている場合のみ。
+- 署名は ad-hoc のみ。Developer ID 署名・公証はしない（Secrets 不要）。
 - 成果物: `NumpadLuma-{upstream-ver}-luma.{luma-ver}-universal.dmg` + SHA256SUMS
 
 ## Build
@@ -22,7 +22,7 @@ yeonfish6040/Numpad のフォーク。main ブランチが上流のコピー、l
 ```sh
 bash scripts/build-app.sh          # ローカルビルド (ad-hoc署名)
 UNIVERSAL=1 bash scripts/build-app.sh  # universal ビルド
-bash scripts/build-dmg.sh          # DMG作成 (署名はSIGN_IDENTITY環境変数)
+bash scripts/build-dmg.sh          # DMG作成 (universal, ad-hoc署名)
 ```
 
 ## Localization

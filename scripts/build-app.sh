@@ -41,11 +41,7 @@ PLIST
 
 swift scripts/MakeIcon.swift "$PWD/dist/AppIcon.iconset"
 iconutil -c icns "$PWD/dist/AppIcon.iconset" -o "$bundle/Contents/Resources/AppIcon.icns"
-if [[ -n "${SIGN_IDENTITY:-}" ]]; then
-    codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" --identifier com.yftech.NumpadLuma "$bundle"
-else
-    codesign --force --sign - --identifier com.yftech.NumpadLuma "$bundle"
-fi
+codesign --force --sign - --identifier com.yftech.NumpadLuma "$bundle"
 codesign --verify --strict "$bundle"
 "$bundle/Contents/MacOS/NumpadLuma" --check-localization
 printf '\nApp: %s\n' "$bundle"

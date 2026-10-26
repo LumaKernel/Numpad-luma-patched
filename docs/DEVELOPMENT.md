@@ -22,8 +22,8 @@ The default build targets the current Mac architecture and uses an ad hoc signat
 | `Sources/TrackpadCore` | Key mapping, tap recognition, anchors, calibration, overlay placement and snapping, localization |
 | `Sources/TrackpadNumpad` | Input monitoring, right-hand shortcut, menu bar, SwiftUI settings and overlay |
 | `Tests/TrackpadCoreTests` | Input behavior, calibration, placement, snapping, language defaults and translation catalogs |
-| `scripts/build-app.sh` | App bundle, localization resources, icon generation, signing |
-| `scripts/build-dmg.sh` | Universal DMG, Applications shortcut, optional notarization, SHA-256 checksums |
+| `scripts/build-app.sh` | App bundle, localization resources, icon generation, ad-hoc signing |
+| `scripts/build-dmg.sh` | Universal DMG, Applications shortcut, SHA-256 checksums |
 
 ## Localization
 
@@ -69,25 +69,13 @@ The setup guide opens automatically on first launch. Completion or dismissal sav
 - A new confirmed input cancels the previous highlight clear task. Highlighting turns on immediately, stays for 160 ms after the latest input, then fades over 80 ms. Reduce Motion disables the fade.
 - Three-finger calibration uses `4·5·6`, anchoring `5` to the middle finger. Four-finger calibration uses the middle contacts at `×·−`. Both preserve key proportions through translation, rotation, and uniform scale.
 
-## Signed DMG releases
-
-Install a **Developer ID Application** certificate and private key. Store notarization credentials locally in Keychain:
+## DMG releases
 
 ```sh
-xcrun notarytool store-credentials Numpad
-```
-
-Then build:
-
-```sh
-SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" \
-NOTARY_PROFILE=Numpad \
 bash scripts/build-dmg.sh
 ```
 
-The script enables hardened runtime, timestamps the app signature, notarizes the app, staples its ticket, creates and signs the DMG, notarizes and staples the DMG, and checks Gatekeeper acceptance. Output: `dist/Numpad-<version>-universal.dmg` and its SHA-256 checksum file.
-
-Without signing credentials, `bash scripts/build-dmg.sh` produces a local test DMG with no notarization. Do not publish it as a notarized release. Keep credentials and private keys out of the repository.
+Output: `dist/NumpadLuma-<version>-universal.dmg` and its SHA-256 checksum file. The app is ad-hoc signed and not notarized, so Gatekeeper blocks the first launch of a downloaded copy until it is allowed in **System Settings > Privacy & Security** or the quarantine attribute is removed (`xattr -dr com.apple.quarantine /Applications/NumpadLuma.app`).
 
 ## Platform notes
 
