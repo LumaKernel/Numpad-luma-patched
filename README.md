@@ -1,6 +1,6 @@
 > **This is a fork of [yeonfish6040/Numpad](https://github.com/yeonfish6040/Numpad).**
 >
-> The original project is licensed under the [Numpad Noncommercial Share-Alike License 1.0](https://github.com/yeonfish6040/Numpad/blob/main/LICENSE). All code in this repository follows that license. The modifications I (LumaKernel) have made are freely available within the scope of the original license.
+> The original project is licensed under the [Numpad Noncommercial Share-Alike License 1.0](https://github.com/yeonfish6040/Numpad/blob/main/LICENSE). All code in this repository follows that license. The modifications I (luma) have made are freely available within the scope of the original license.
 
 ---
 
