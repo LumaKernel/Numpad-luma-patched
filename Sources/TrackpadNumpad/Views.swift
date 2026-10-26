@@ -118,6 +118,7 @@ struct GuideView: View {
                 .shadow(color: .black.opacity(0.8), radius: 2, y: 1)
         }
         .padding(8)
+        .opacity(model.overlayOpacity)
         .overlay {
             OverlayDragSurface(began: { model.beginOverlayDrag() },
                 moved: { model.moveOverlay(to: $0, pointer: $1) }, ended: { model.endOverlayDrag() })
@@ -250,6 +251,18 @@ struct SettingsView: View {
             Text(L("Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(L("Overlay Opacity")).font(.system(size: 12))
+                    Spacer()
+                    Text("\(Int(model.overlayOpacity * 100))%")
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                }
+                Slider(value: $model.overlayOpacity, in: 0.1...1.0, step: 0.05)
+                    .tint(mint)
+            }
             Divider()
             VStack(alignment: .leading, spacing: 8) {
                 Toggle(L("Confirm Key at Lift-Off Position"), isOn: $model.confirmAtLiftOff)

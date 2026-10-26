@@ -92,6 +92,9 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             if enabled { updateGuide() }
         }
     }
+    @Published var overlayOpacity = UserDefaults.standard.object(forKey: "overlayOpacity") as? Double ?? 1.0 {
+        didSet { UserDefaults.standard.set(overlayOpacity, forKey: "overlayOpacity") }
+    }
     @Published var confirmAtLiftOff = UserDefaults.standard.bool(forKey: "confirmAtLiftOff") {
         didSet {
             UserDefaults.standard.set(confirmAtLiftOff, forKey: "confirmAtLiftOff")
