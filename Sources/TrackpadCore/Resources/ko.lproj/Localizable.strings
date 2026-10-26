@@ -140,3 +140,5 @@
 "Trackpad Region" = "트랙패드 사용 영역";
 "Drag the edges or corners to limit the active area of your trackpad." = "변이나 모서리를 드래그하여 트랙패드의 활성 영역을 조절하세요.";
 "Reset to Full Trackpad" = "전체 트랙패드로 초기화";
+"Confirm Key at Lift-Off Position" = "손가락을 뗀 위치로 입력 확정";
+"When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched." = "활성화하면 처음 터치한 위치가 아니라, 손가락을 뗀 위치의 키가 입력됩니다.";

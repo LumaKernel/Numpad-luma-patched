@@ -72,6 +72,11 @@ public struct AnchoredTapRecognizer {
         tap = TapRecognizer(layout: layout); region = FiveRegion(layout: layout)
     }
 
+    public var confirmAtLiftOff: Bool {
+        get { tap.confirmAtLiftOff }
+        set { tap.confirmAtLiftOff = newValue }
+    }
+
     public mutating func cancelCurrentTap() { tap.reset(waitForLift: true); beganKey = nil }
 
     public mutating func reset(waitForLift: Bool = false) {

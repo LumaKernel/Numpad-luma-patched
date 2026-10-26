@@ -68,15 +68,17 @@ public struct TapRecognizer {
     public private(set) var beganKey: PadKey?
     private var start: Touch?
     private var key: PadKey?
+    private var lastKey: PadKey?
     private var beganAt: Double = 0
     private var cancelled = false
     public var maximumDuration: Double = 0.45
     public var maximumTravel: Double = 0.055
+    public var confirmAtLiftOff = false
     public var layout: KeypadLayout
     public init(layout: KeypadLayout = .right) { self.layout = layout }
 
     public mutating func reset(waitForLift: Bool = false) {
-        start = nil; key = nil; beganKey = nil; cancelled = waitForLift
+        start = nil; key = nil; lastKey = nil; beganKey = nil; cancelled = waitForLift
     }
 
     public mutating func process(_ touches: [Touch], at timestamp: Double) -> PadKey? {
@@ -86,19 +88,30 @@ public struct TapRecognizer {
             defer { reset() }
             let duration = timestamp - beganAt
             guard start != nil, !cancelled, duration >= 0.025, duration <= maximumDuration else { return nil }
-            return key
+            return confirmAtLiftOff ? lastKey : key
         }
         guard touches.count == 1, !cancelled else { cancelled = true; return nil }
         let touch = touches[0]
-        guard let currentKey = PadKey.at(x: touch.x, y: touch.y, layout: layout) else { cancelled = true; return nil }
+        guard let currentKey = PadKey.at(x: touch.x, y: touch.y, layout: layout) else {
+            if !confirmAtLiftOff { cancelled = true }
+            lastKey = nil
+            return nil
+        }
         if let first = start {
-            let distance = hypot(touch.x - first.x, touch.y - first.y)
-            if touch.id != first.id || currentKey != key || distance > maximumTravel ||
-                timestamp < beganAt || timestamp - beganAt > maximumDuration { cancelled = true }
+            if confirmAtLiftOff {
+                if touch.id != first.id || timestamp < beganAt || timestamp - beganAt > maximumDuration {
+                    cancelled = true
+                }
+            } else {
+                let distance = hypot(touch.x - first.x, touch.y - first.y)
+                if touch.id != first.id || currentKey != key || distance > maximumTravel ||
+                    timestamp < beganAt || timestamp - beganAt > maximumDuration { cancelled = true }
+            }
         } else {
             start = touch; key = currentKey; beganAt = timestamp
             beganKey = currentKey
         }
+        lastKey = currentKey
         return nil
     }
 }

@@ -140,3 +140,5 @@
 "Trackpad Region" = "トラックパッドの使用領域";
 "Drag the edges or corners to limit the active area of your trackpad." = "辺や角をドラッグして、トラックパッドの有効範囲を調整します。";
 "Reset to Full Trackpad" = "全面に戻す";
+"Confirm Key at Lift-Off Position" = "指を離した位置で入力を確定";
+"When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched." = "有効にすると、最初にタッチした位置ではなく、指を離した位置のキーが入力されます。";

@@ -249,6 +249,14 @@ struct SettingsView: View {
             Text(L("Click and drag the overlay to save its position. It moves out of the way when it would cover the focused input field."))
                 .font(.system(size: 11)).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            Divider()
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(L("Confirm Key at Lift-Off Position"), isOn: $model.confirmAtLiftOff)
+                    .toggleStyle(.switch).tint(mint)
+                Text(L("When enabled, the key under your finger when you lift it is entered, instead of the key where you first touched."))
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Spacer(minLength: 0)
         }.padding(20)
     }

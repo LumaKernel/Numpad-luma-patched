@@ -92,6 +92,12 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             if enabled { updateGuide() }
         }
     }
+    @Published var confirmAtLiftOff = UserDefaults.standard.bool(forKey: "confirmAtLiftOff") {
+        didSet {
+            UserDefaults.standard.set(confirmAtLiftOff, forKey: "confirmAtLiftOff")
+            recognizer.confirmAtLiftOff = confirmAtLiftOff
+        }
+    }
     @Published var padRegion = PadRegion.load() {
         didSet {
             guard oldValue != padRegion else { return }
@@ -343,6 +349,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     private func resetInputState() {
         calibrationTracking = false; calibrationBaseline = nil
         recognizer = AnchoredTapRecognizer(layout: controlSide)
+        recognizer.confirmAtLiftOff = confirmAtLiftOff
         recognizer.reset(waitForLift: !touches.isEmpty)
         centerFeedback = CenterCrossingFeedback(layout: controlSide)
         calibrationGesture.reset(waitForLift: !touches.isEmpty)
