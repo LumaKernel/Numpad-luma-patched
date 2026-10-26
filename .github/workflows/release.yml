@@ -100,32 +100,38 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          DISPLAY_VERSION: ${{ steps.version.outputs.display }}
+          UPSTREAM_VERSION: ${{ steps.version.outputs.upstream }}
+          TAG_MESSAGE: ${{ steps.version.outputs.tag_message }}
+          SIGNED: ${{ secrets.SIGN_IDENTITY != '' }}
         run: |
-          tag="${{ steps.version.outputs.tag }}"
-          display="${{ steps.version.outputs.display }}"
-          signed=""
-          if [[ -n "${{ secrets.SIGN_IDENTITY }}" ]]; then
+          if [[ "$SIGNED" == "true" ]]; then
             signed="The app and DMG are Developer ID signed and notarized by Apple."
           else
             signed="This is an unsigned test build. Not notarized."
           fi
-          tag_message="${{ steps.version.outputs.tag_message }}"
-          notes="## NumpadLuma ${display}
-
-Based on upstream Numpad ${{ steps.version.outputs.upstream }}.
-${tag_message:+
-$tag_message
-}
-${signed}
-
-## Download
-
-Quit the older copy, open \`NumpadLuma-${display}-universal.dmg\`, and replace **NumpadLuma** in **Applications**.
-Supports macOS 13+ on Apple Silicon and Intel Macs.
-
-SHA-256 checksums are included in \`NumpadLuma-${display}-SHA256SUMS.txt\`."
-          gh release create "$tag" \
-            --title "NumpadLuma ${display}" \
-            --notes "$notes" \
-            "dist/NumpadLuma-${display}-universal.dmg" \
-            "dist/NumpadLuma-${display}-SHA256SUMS.txt"
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "## NumpadLuma ${DISPLAY_VERSION}"
+            echo
+            echo "Based on upstream Numpad ${UPSTREAM_VERSION}."
+            if [[ -n "${TAG_MESSAGE//[[:space:]]/}" ]]; then
+              echo
+              echo "$TAG_MESSAGE"
+            fi
+            echo
+            echo "$signed"
+            echo
+            echo "## Download"
+            echo
+            echo "Quit the older copy, open \`NumpadLuma-${DISPLAY_VERSION}-universal.dmg\`, and replace **NumpadLuma** in **Applications**."
+            echo "Supports macOS 13+ on Apple Silicon and Intel Macs."
+            echo
+            echo "SHA-256 checksums are included in \`NumpadLuma-${DISPLAY_VERSION}-SHA256SUMS.txt\`."
+          } > "$notes_file"
+          gh release create "$TAG" \
+            --title "NumpadLuma ${DISPLAY_VERSION}" \
+            --notes-file "$notes_file" \
+            "dist/NumpadLuma-${DISPLAY_VERSION}-universal.dmg" \
+            "dist/NumpadLuma-${DISPLAY_VERSION}-SHA256SUMS.txt"
