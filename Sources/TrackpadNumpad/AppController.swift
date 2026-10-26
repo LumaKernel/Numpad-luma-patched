@@ -275,8 +275,13 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
             self.touches = rawTouches
             self.input.updateTouches(rawTouches)
             // Remap touches through the active pad region (crop).
+            // Out-of-region touches become (-1,-1) so the recognizer knows
+            // a finger is still down but not on any key, instead of treating
+            // the filtered-out touch as a lift-off.
             let region = self.padRegion
-            let touches: [Touch] = region.isFullPad ? rawTouches : rawTouches.compactMap { region.remap($0) }
+            let touches: [Touch] = region.isFullPad ? rawTouches : rawTouches.map {
+                region.remap($0) ?? Touch(id: $0.id, x: -1, y: -1)
+            }
             if self.overlayDragging {
                 self.recognizer.reset(waitForLift: !touches.isEmpty)
                 self.centerFeedback.reset()
