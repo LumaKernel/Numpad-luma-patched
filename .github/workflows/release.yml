@@ -19,6 +19,8 @@ jobs:
       - name: Verify annotated tag
         run: |
           tag="${GITHUB_REF#refs/tags/}"
+          # actions/checkout rewrites the pushed tag as a lightweight ref; fetch the real tag object.
+          git fetch --force origin "+refs/tags/$tag:refs/tags/$tag"
           kind="$(git cat-file -t "$tag")"
           if [[ "$kind" != "tag" ]]; then
             echo "::error::$tag is a lightweight tag (${kind}). Use an annotated tag: git tag -a $tag -m '...'" >&2
