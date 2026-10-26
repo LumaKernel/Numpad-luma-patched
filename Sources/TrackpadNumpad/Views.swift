@@ -197,6 +197,7 @@ struct SettingsView: View {
     }
 
     private var generalSettings: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Text(L("Language"))
@@ -257,8 +258,8 @@ struct SettingsView: View {
                     .font(.system(size: 11)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: 0)
         }.padding(20)
+        }
     }
 
     private var regionSettings: some View {
