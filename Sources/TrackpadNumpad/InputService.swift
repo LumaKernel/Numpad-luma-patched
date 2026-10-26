@@ -219,24 +219,67 @@ struct CustomShortcut: Codable, Equatable {
         return n
     }
 
-    static func keyName(for keyCode: UInt16) -> String {
-        // Use Carbon's TISCopyCurrentKeyboardInputSource for layout-aware names.
-        if let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
-           let layoutData = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) {
-            let layout = unsafeBitCast(layoutData, to: CFData.self)
-            let layoutPointer = CFDataGetBytePtr(layout)!
+    // ANSI key code → display name (covers full keyboard)
+    private static let keyNames: [UInt16: String] = [
+        // Letters
+        0: "A", 1: "S", 2: "D", 3: "F", 4: "H", 5: "G", 6: "Z", 7: "X",
+        8: "C", 9: "V", 11: "B", 12: "Q", 13: "W", 14: "E", 15: "R",
+        16: "Y", 17: "T", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
+        23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
+        30: "]", 31: "O", 32: "U", 33: "[", 34: "I", 35: "P",
+        37: "L", 38: "J", 39: "'", 40: "K", 41: ";", 42: "\\",
+        43: ",", 44: "/", 45: "N", 46: "M", 47: ".",
+        50: "`", 10: "§",
+        // Special keys
+        36: "↩︎", 48: "⇥", 49: "Space", 51: "⌫", 53: "⎋",
+        76: "⌤", 96: "F5", 97: "F6", 98: "F7", 99: "F3",
+        100: "F8", 101: "F9", 103: "F11", 105: "F13",
+        107: "F14", 109: "F10", 111: "F12", 113: "F15",
+        114: "Help", 115: "↖︎", 116: "⇞", 117: "⌦",
+        118: "F4", 119: "↘︎", 120: "F2", 121: "⇟",
+        122: "F1", 123: "←", 124: "→", 125: "↓", 126: "↑",
+        // Numpad
+        65: "Num.", 67: "Num*", 69: "Num+", 71: "Clear",
+        75: "Num/", 78: "Num-",
+        82: "Num0", 83: "Num1", 84: "Num2", 85: "Num3",
+        86: "Num4", 87: "Num5", 88: "Num6", 89: "Num7",
+        91: "Num8", 92: "Num9",
+        // JIS specific
+        93: "¥", 94: "_",
+    ]
+
+    private static func layoutData(for source: TISInputSource) -> Data? {
+        guard let ptr = TISGetInputSourceProperty(source, kTISPropertyUnicodeKeyLayoutData) else { return nil }
+        return unsafeBitCast(ptr, to: CFData.self) as Data
+    }
+
+    private static func translateKey(_ keyCode: UInt16, layout: Data) -> String? {
+        return layout.withUnsafeBytes { raw -> String? in
+            guard let base = raw.baseAddress else { return nil }
+            let layoutPtr = base.assumingMemoryBound(to: UCKeyboardLayout.self)
             var deadKeyState: UInt32 = 0
             var length: Int = 0
             var chars = [UniChar](repeating: 0, count: 4)
             let status = UCKeyTranslate(
-                layoutPointer.withMemoryRebound(to: UCKeyboardLayout.self, capacity: 1) { $0 },
-                keyCode, UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
+                layoutPtr, keyCode, UInt16(kUCKeyActionDisplay), 0, UInt32(LMGetKbdType()),
                 UInt32(kUCKeyTranslateNoDeadKeysBit), &deadKeyState, 4, &length, &chars)
-            if status == noErr, length > 0 {
-                return String(utf16CodeUnits: chars, count: length).uppercased()
-            }
+            guard status == noErr, length > 0 else { return nil }
+            let name = String(utf16CodeUnits: chars, count: length)
+            guard !name.unicodeScalars.allSatisfy({ CharacterSet.controlCharacters.contains($0) }) else { return nil }
+            return name.uppercased()
         }
-        return "Key\(keyCode)"
+    }
+
+    static func keyName(for keyCode: UInt16) -> String {
+        // Try layout-aware name first.
+        if let source = TISCopyCurrentKeyboardInputSource()?.takeRetainedValue(),
+           let data = layoutData(for: source),
+           let name = translateKey(keyCode, layout: data) { return name }
+        if let source = TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue(),
+           let data = layoutData(for: source),
+           let name = translateKey(keyCode, layout: data) { return name }
+        // Fall back to hardcoded ANSI table.
+        return keyNames[keyCode] ?? "Key\(keyCode)"
     }
 
     static func load() -> CustomShortcut {
@@ -266,6 +309,7 @@ final class ActivationShortcut {
         }
     }
     var action: (() -> Void)?
+    var suspended = false
 
     func start() {
         guard tap == nil, AXIsProcessTrusted() else { return }
@@ -290,7 +334,8 @@ final class ActivationShortcut {
                 }
                 switch shortcutObj.shortcut.kind {
                 case .rightModifierChord:
-                    if type == .flagsChanged, shortcutObj.chord.update(flags: event.flags.rawValue) {
+                    if type == .flagsChanged, shortcutObj.chord.update(flags: event.flags.rawValue),
+                       !shortcutObj.suspended {
                         DispatchQueue.main.async { shortcutObj.action?() }
                     }
                 case .modifierChord:
@@ -298,13 +343,13 @@ final class ActivationShortcut {
                         let current = event.flags.rawValue & CustomShortcut.deviceModifierMask
                         let required = shortcutObj.shortcut.modifiers
                         let matched = current == required
-                        if matched && !shortcutObj.modifierChordActive {
+                        if matched && !shortcutObj.modifierChordActive && !shortcutObj.suspended {
                             DispatchQueue.main.async { shortcutObj.action?() }
                         }
                         shortcutObj.modifierChordActive = matched
                     }
                 case .keyCombo:
-                    if type == .keyDown {
+                    if type == .keyDown && !shortcutObj.suspended {
                         let keyCode = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
                         let modifierMask: UInt64 = CGEventFlags.maskCommand.rawValue | CGEventFlags.maskShift.rawValue
                             | CGEventFlags.maskAlternate.rawValue | CGEventFlags.maskControl.rawValue
