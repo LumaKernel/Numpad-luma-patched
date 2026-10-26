@@ -58,21 +58,32 @@ struct GuideView: View {
     var body: some View {
         VStack(spacing: 8) {
             GeometryReader { geometry in
+                let region = model.padRegion
+                let regionAspect = region.isFullPad
+                    ? PadGeometry.aspectRatio
+                    : (region.width * PadGeometry.aspectRatio) / region.height
                 ZStack(alignment: .topLeading) {
                     KeypadView(highlighted: model.highlighted, compact: true, layout: model.controlSide)
                         .transformEffect(model.effectiveTransform.inverse.screenTransform(size: geometry.size))
                         .animation(.easeOut(duration: (NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || model.calibrationTracking) ? 0 : 0.18), value: model.effectiveTransform)
                     ForEach(Array(model.touches.enumerated()), id: \.offset) { _, touch in
-                        Circle().fill(mint.opacity(0.25))
-                            .overlay(Circle().strokeBorder(mint.opacity(0.8), lineWidth: 1))
+                        // Remap raw touch into region-relative coordinates for display
+                        let rx = region.isFullPad ? touch.x : (touch.x - region.minX) / region.width
+                        let ry = region.isFullPad ? touch.y : (touch.y - region.minY) / region.height
+                        let inside = rx >= 0 && rx <= 1 && ry >= 0 && ry <= 1
+                        Circle().fill(mint.opacity(inside ? 0.25 : 0.08))
+                            .overlay(Circle().strokeBorder(mint.opacity(inside ? 0.8 : 0.2), lineWidth: 1))
                             .frame(width: 18, height: 18)
-                            .position(x: min(1, max(0, touch.x)) * geometry.size.width,
-                                      y: (1 - min(1, max(0, touch.y))) * geometry.size.height)
+                            .position(x: min(1, max(0, rx)) * geometry.size.width,
+                                      y: (1 - min(1, max(0, ry))) * geometry.size.height)
                     }
                 }
                 .clipped()
             }
-            .aspectRatio(PadGeometry.aspectRatio, contentMode: .fit)
+            .aspectRatio(model.padRegion.isFullPad
+                ? PadGeometry.aspectRatio
+                : (model.padRegion.width * PadGeometry.aspectRatio) / model.padRegion.height,
+                contentMode: .fit)
             .padding(14)
             .background {
                 TrackpadMaterial()
