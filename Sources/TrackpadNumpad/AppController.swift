@@ -111,6 +111,8 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         optionShortcut.restart()
         updateMenu()
     }
+    func suspendShortcut() { optionShortcut.suspended = true }
+    func resumeShortcut() { optionShortcut.suspended = false }
 
     @Published private(set) var loginItemStatus = SMAppService.mainApp.status
 
@@ -159,6 +161,7 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
     private var highlightClearWork: DispatchWorkItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        setupMainMenu()
         configurationChanged()
         deviceReady = TPInitialize()
         if !deviceReady { messageText = LocalizedMessage(String(cString: TPError())) }
@@ -640,6 +643,24 @@ final class AppController: NSObject, ObservableObject, NSApplicationDelegate, NS
         }
         let other = window === settingsWindow ? onboardingWindow : settingsWindow
         if other?.isVisible != true { NSApp.setActivationPolicy(.accessory) }
+    }
+
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+        // App menu (required first item)
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(withTitle: L("Quit NumpadLuma"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+        // Window menu with Close (Cmd-W)
+        let windowMenuItem = NSMenuItem()
+        let windowMenu = NSMenu(title: "Window")
+        let closeItem = NSMenuItem(title: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenu.addItem(closeItem)
+        windowMenuItem.submenu = windowMenu
+        mainMenu.addItem(windowMenuItem)
+        NSApp.mainMenu = mainMenu
     }
 
     private func updateMenu() {

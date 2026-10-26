@@ -307,12 +307,16 @@ struct SettingsView: View {
                 ShortcutEditorView(shortcut: Binding(
                     get: { model.currentShortcut },
                     set: { model.setShortcut($0) }
-                ))
+                ), onRecordingChanged: { recording in
+                    if recording { model.suspendShortcut() } else { model.resumeShortcut() }
+                })
                 Divider()
                 ShortcutRecorderView(shortcut: Binding(
                     get: { model.currentShortcut },
                     set: { model.setShortcut($0) }
-                ))
+                ), onRecordingChanged: { recording in
+                    if recording { model.suspendShortcut() } else { model.resumeShortcut() }
+                })
                 Divider()
                 Button(L("Reset to Default (Right ⌘ + Right ⌥)")) {
                     model.setShortcut(.defaultShortcut)

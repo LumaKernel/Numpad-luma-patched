@@ -361,6 +361,7 @@ private enum ShortcutMode: Int {
 
 struct ShortcutEditorView: View {
     @Binding var shortcut: CustomShortcut
+    var onRecordingChanged: ((Bool) -> Void)?
     @State private var mode: ShortcutMode
     // Modifier-only: device-specific bits
     @State private var deviceBits: UInt64
@@ -370,8 +371,9 @@ struct ShortcutEditorView: View {
     @State private var recordingKey = false
     @State private var keyMonitor: Any?
 
-    init(shortcut: Binding<CustomShortcut>) {
+    init(shortcut: Binding<CustomShortcut>, onRecordingChanged: ((Bool) -> Void)? = nil) {
         self._shortcut = shortcut
+        self.onRecordingChanged = onRecordingChanged
         let s = shortcut.wrappedValue
         switch s.kind {
         case .rightModifierChord:
@@ -515,6 +517,7 @@ struct ShortcutEditorView: View {
 
     private func startKeyRecording() {
         recordingKey = true
+        onRecordingChanged?(true)
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
             if event.keyCode == 53 { stopKeyRecording(); return nil }
             keyCode = event.keyCode
@@ -525,6 +528,7 @@ struct ShortcutEditorView: View {
 
     private func stopKeyRecording() {
         recordingKey = false
+        onRecordingChanged?(false)
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
     }
@@ -534,6 +538,7 @@ struct ShortcutEditorView: View {
 
 struct ShortcutRecorderView: View {
     @Binding var shortcut: CustomShortcut
+    var onRecordingChanged: ((Bool) -> Void)?
     @State private var recording = false
     @State private var keyMonitor: Any?
     @State private var flagsMonitor: Any?
@@ -564,6 +569,7 @@ struct ShortcutRecorderView: View {
 
     private func startRecording() {
         recording = true
+        onRecordingChanged?(true)
         peakDeviceBits = 0
         liveDisplay = ""
         // Monitor modifier key changes to support modifier-only shortcuts.
@@ -597,6 +603,7 @@ struct ShortcutRecorderView: View {
 
     private func stopRecording() {
         recording = false
+        onRecordingChanged?(false)
         peakDeviceBits = 0
         liveDisplay = ""
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
